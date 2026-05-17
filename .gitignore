@@ -1,5 +1,6 @@
 node_modules/
-npm-cache/
-server.log
-database/*.db
+.env
+*.log
+database/
 .DS_Store
+npm-debug.log*
