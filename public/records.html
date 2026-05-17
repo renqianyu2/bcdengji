@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>访客管理</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+      background: #f5f7fa;
+      min-height: 100vh;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      color: white;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header h1 { font-size: 18px; }
+    .header-links { display: flex; gap: 12px; }
+    .header-links a { color: white; text-decoration: none; font-size: 14px; opacity: 0.9; }
+    
+    .tabs {
+      background: white;
+      display: flex;
+      border-bottom: 1px solid #e5e7eb;
+      position: sticky;
+      top: 54px;
+      z-index: 99;
+    }
+    .tab {
+      flex: 1;
+      padding: 14px;
+      text-align: center;
+      background: none;
+      border: none;
+      font-size: 15px;
+      color: #6b7280;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+    }
+    .tab.active { color: #3b82f6; border-bottom-color: #3b82f6; font-weight: 600; }
+    
+    .toolbar {
+      background: white;
+      padding: 12px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .toolbar input, .toolbar select {
+      padding: 10px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    .toolbar input { flex: 1; min-width: 120px; }
+    .toolbar select { min-width: 100px; }
+    .toolbar button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-secondary { background: #f3f4f6; color: #374151; }
+    .btn-success { background: #22c55e; color: white; }
+    
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      padding: 16px;
+      background: white;
+      margin-bottom: 10px;
+    }
+    .stat-item {
+      text-align: center;
+      padding: 12px;
+      background: #f8fafc;
+      border-radius: 10px;
+    }
+    .stat-item .num { font-size: 24px; font-weight: 700; color: #3b82f6; }
+    .stat-item .label { font-size: 12px; color: #6b7280; margin-top: 4px; }
+    
+    .visitor-list { padding: 12px; }
+    
+    .visitor-card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .visitor-card .avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: #e0e7ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: #3b82f6;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .visitor-card .avatar img { width: 100%; height: 100%; object-fit: cover; }
+    
+    .visitor-card .info { flex: 1; min-width: 0; }
+    .visitor-card .name { font-size: 16px; font-weight: 600; color: #1f2937; }
+    .visitor-card .meta { font-size: 13px; color: #6b7280; margin-top: 2px; }
+    .visitor-card .tags { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+    .visitor-card .tag {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      background: #e0e7ff;
+      color: #3b82f6;
+    }
+    .visitor-card .tag.green { background: #dcfce7; color: #16a34a; }
+    
+    .visitor-card .actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .visitor-card .actions button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .btn-detail { background: #3b82f6; color: white; }
+    .btn-checkout { background: #ef4444; color: white; }
+    .btn-delete { background: #6b7280; color: white; }
+    
+    .empty { text-align: center; padding: 60px 20px; color: #9ca3af; }
+    
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .modal-overlay.show { display: flex; }
+    
+    .modal {
+      background: white;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 400px;
+      max-height: 90vh;
+      overflow: auto;
+    }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h2 { font-size: 18px; color: #333; }
+    .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #999; }
+    .modal-body { padding: 20px; }
+    
+    .detail-row {
+      display: flex;
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .detail-label { width: 80px; color: #999; font-size: 13px; }
+    .detail-value { flex: 1; color: #333; font-size: 13px; word-break: break-all; }
+    
+    .stats-section { padding: 16px; display: none; }
+    .stats-section.show { display: block; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+    }
+    .stat-card h4 { font-size: 13px; color: #6b7280; }
+    .stat-card .value { font-size: 28px; font-weight: 700; color: #3b82f6; margin-top: 8px; }
+    .stat-card.orange .value { color: #f59e0b; }
+    
+    .chart-card {
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+    .chart-card h4 { font-size: 14px; color: #333; margin-bottom: 12px; }
+    
+    .rank-table {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .rank-table table { width: 100%; border-collapse: collapse; }
+    .rank-table th { background: #f8fafc; padding: 12px; text-align: left; font-size: 13px; color: #6b7280; }
+    .rank-table td { padding: 12px; border-top: 1px solid #f0f0f0; font-size: 14px; }
+    .rank-table td:first-child { color: #3b82f6; font-weight: 600; }
+    
+    @media (max-width: 600px) {
+      .header { padding: 12px 16px; }
+      .header h1 { font-size: 16px; }
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .toolbar { flex-direction: column; }
+      .toolbar input, .toolbar select { width: 100%; }
+      .visitor-card { flex-wrap: wrap; }
+      .visitor-card .actions { width: 100%; justify-content: flex-end; margin-top: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-overlay" id="loginOverlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:9999;">
+    <div style="background:white;padding:40px;border-radius:16px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <h2 style="margin-bottom:20px;">请输入密码</h2>
+      <input type="password" id="password" placeholder="请输入管理密码" style="padding:12px;border:2px solid #e1e5ee;border-radius:8px;width:200px;text-align:center;font-size:16px;">
+      <br><br>
+      <button onclick="checkPassword()" style="padding:12px 30px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;">确认</button>
+      <p id="loginError" style="color:#ef4444;margin-top:10px;display:none;">密码错误</p>
+    </div>
+  </div>
+  
+  <div class="main-content" id="mainContent" style="display:none;">
+  <div class="header">
+    <h1>访客管理</h1>
+    <div class="header-links">
+      <a href="/index.html">登记</a>
+      <a href="/print">打印</a>
+    </div>
+  </div>
+  
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('current', this)">当前在访</button>
+    <button class="tab" onclick="showTab('history', this)">历史记录</button>
+    <button class="tab" onclick="showTab('stats', this)">统计</button>
+  </div>
+  
+  <div class="toolbar" id="toolbar">
+    <input type="text" id="searchInput" oninput="renderAll()" placeholder="搜索姓名/手机号...">
+    <select id="statusFilter" onchange="renderAll()">
+      <option value="all">全部状态</option>
+      <option value="current">在访中</option>
+      <option value="checked">已签离</option>
+    </select>
+    <select id="identityFilter" onchange="renderAll()">
+      <option value="">全部身份</option>
+      <option value="家长">学生家长</option>
+      <option value="维修工">维修工人</option>
+      <option value="外来老师">外来老师</option>
+    </select>
+    <button class="btn-success" onclick="exportExcel()">导出</button>
+  </div>
+  
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-item"><div class="num" id="totalCount">0</div><div class="label">总记录</div></div>
+    <div class="stat-item"><div class="num" id="currentCount">0</div><div class="label">当前在访</div></div>
+    <div class="stat-item"><div class="num" id="todayCount">0</div><div class="label">今日访问</div></div>
+    <div class="stat-item"><div class="num" id="visitorCount">0</div><div class="label">访客人数</div></div>
+  </div>
+  
+  <div class="visitor-list" id="visitorList"></div>
+  
+  <div class="stats-section" id="statsSection">
+    <div class="stats-grid">
+      <div class="stat-card"><h4>总访问人次</h4><div class="value" id="totalVisits">0</div></div>
+      <div class="stat-card"><h4>今日访问</h4><div class="value" id="todayVisits">0</div></div>
+      <div class="stat-card orange"><h4>平均停留</h4><div class="value" id="avgDuration">0分钟</div></div>
+      <div class="stat-card orange"><h4>被访最多</h4><div class="value" id="topHost">-</div></div>
+    </div>
+    
+    <div class="chart-card">
+      <h4>近7日访问趋势</h4>
+      <canvas id="trendChart" style="max-height:200px;"></canvas>
+    </div>
+    
+    <div class="rank-table">
+      <table>
+        <thead><tr><th>排名</th><th>访客姓名</th><th>访问次数</th></tr></thead>
+        <tbody id="rankTable"></tbody>
+      </table>
+    </div>
+    
+    <div class="rank-table" style="margin-top:16px;">
+      <table>
+        <thead><tr><th>排名</th><th>被访人</th><th>被访次数</th></tr></thead>
+        <tbody id="hostRankTable"></tbody>
+      </table>
+    </div>
+    
+    <div class="rank-table" style="margin-top:16px;">
+      <table>
+        <thead><tr><th>排名</th><th>被采访人</th><th>被采访次数</th></tr></thead>
+        <tbody id="interviewRankTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="detailModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>访客详情</h2>
+        <button class="modal-close" onclick="closeDetail()">&times;</button>
+      </div>
+      <div class="modal-body" id="detailContent"></div>
+    </div>
+  </div>
+
+  <script>
+    function checkPassword() {
+      if (document.getElementById('password').value === '1234') {
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+        loadData();
+      } else {
+        document.getElementById('loginError').style.display = 'block';
+      }
+    }
+    
+    document.getElementById('password').addEventListener('keyup', function(e) {
+      if (e.key === 'Enter') checkPassword();
+    });
+    
+    var allData = [];
+    var currentTab = 'current';
+    var trendChart;
+    
+    async function loadData() {
+      var res = await fetch('/api/visitors?page=1&pageSize=500&_t=' + Date.now());
+      var data = await res.json();
+      allData = data.data || [];
+      renderAll();
+      renderStats();
+    }
+    
+    function showTab(tab, el) {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach(function(t) { t.className = 'tab'; });
+      el.className = 'tab active';
+      
+      document.getElementById('toolbar').style.display = tab === 'stats' ? 'none' : 'flex';
+      document.getElementById('statsBar').style.display = tab === 'stats' ? 'none' : 'grid';
+      document.getElementById('visitorList').style.display = tab === 'stats' ? 'none' : 'block';
+      document.getElementById('statsSection').className = 'stats-section' + (tab === 'stats' ? ' show' : '');
+      
+      renderAll();
+    }
+    
+    function renderAll() {
+      var search = document.getElementById('searchInput').value.toLowerCase();
+      var status = document.getElementById('statusFilter').value;
+      var identity = document.getElementById('identityFilter').value;
+      
+      var filtered = allData.filter(function(v) {
+        if (search && !v.name.toLowerCase().includes(search) && !v.phone.includes(search)) return false;
+        if (status === 'current' && v.checkout_at) return false;
+        if (status === 'checked' && !v.checkout_at) return false;
+        if (identity && v.identity !== identity) return false;
+        return true;
+      });
+      
+      var current = filtered.filter(function(v) { return !v.checkout_at; });
+      var history = filtered.filter(function(v) { return !!v.checkout_at; });
+      
+      document.getElementById('totalCount').textContent = allData.length;
+      document.getElementById('currentCount').textContent = allData.filter(function(v) { return !v.checkout_at; }).length;
+      document.getElementById('todayCount').textContent = allData.filter(function(v) { return v.checkin_at && v.checkin_at.slice(0, 10) === new Date().toISOString().slice(0, 10); }).length;
+      
+      var visitors = {};
+      allData.forEach(function(v) { visitors[v.name + '|' + v.phone] = true; });
+      document.getElementById('visitorCount').textContent = Object.keys(visitors).length;
+      
+      var list = currentTab === 'current' ? current : history;
+      renderList(list);
+    }
+    
+    function renderList(data) {
+      var el = document.getElementById('visitorList');
+      if (data.length === 0) {
+        el.innerHTML = '<div class="empty">暂无记录</div>';
+        return;
+      }
+      
+      var visitorCounts = {};
+      for (var i = 0; i < allData.length; i++) {
+        var key = allData[i].name + '|' + allData[i].phone;
+        visitorCounts[key] = (visitorCounts[key] || 0) + 1;
+      }
+      
+      var html = '';
+      for (var i = 0; i < data.length; i++) {
+        var v = data[i];
+        var photoHtml = v.photo_path ? '<img src="' + v.photo_path + '">' : '👤';
+        var statusTag = v.checkout_at ? '<span class="tag green">已签离</span>' : '<span class="tag">在访中</span>';
+        
+        var info = '';
+        if (v.identity === '家长' && v.purpose) info = v.purpose;
+        else if (v.identity === '维修工' && v.reason) info = v.reason;
+        else if (v.identity === '外来老师' && v.purpose) info = v.purpose;
+        
+        var key = v.name + '|' + v.phone;
+        var visitCount = visitorCounts[key];
+        var thisVisitNum = 0;
+        var sameNameRecords = allData.filter(function(r) { return r.name + '|' + r.phone === key; }).sort(function(a, b) { return new Date(a.checkin_at) - new Date(b.checkin_at); });
+        for (var j = 0; j < sameNameRecords.length; j++) {
+          if (sameNameRecords[j].id === v.id) {
+            thisVisitNum = j + 1;
+            break;
+          }
+        }
+        
+        var duration = '-';
+        var totalDuration = 0;
+        if (v.checkout_at) {
+          var seconds = (new Date(v.checkout_at) - new Date(v.checkin_at)) / 1000;
+          duration = formatDuration(seconds);
+        }
+        for (var j = 0; j < sameNameRecords.length; j++) {
+          if (sameNameRecords[j].checkout_at) {
+            totalDuration += (new Date(sameNameRecords[j].checkout_at) - new Date(sameNameRecords[j].checkin_at)) / 1000;
+          }
+        }
+        var totalDurationStr = formatDuration(totalDuration);
+        
+        html += '<div class="visitor-card">';
+        html += '<div class="avatar">' + photoHtml + '</div>';
+        html += '<div class="info">';
+        html += '<div class="name">' + v.name + ' <span style="color:#3b82f6;font-size:12px;">第' + thisVisitNum + '次来访</span></div>';
+        html += '<div class="meta">📱 ' + v.phone + ' | ' + (v.code || '-') + '</div>';
+        if (info) html += '<div class="meta">📝 ' + info + '</div>';
+        if (currentTab === 'history' && v.checkout_at) {
+          html += '<div class="meta" style="color:#22c55e;">⏱ 本次: ' + duration + ' | 累计: ' + totalDurationStr + '</div>';
+        }
+        html += '<div class="tags">';
+        html += '<span class="tag">' + (v.identity || '访客') + '</span>';
+        html += statusTag;
+        html += '</div></div>';
+        html += '<div class="actions">';
+        html += '<button class="btn-detail" onclick="showDetail(' + v.id + ')">详情</button>';
+        if (!v.checkout_at) html += '<button class="btn-checkout" onclick="checkout(' + v.id + ')">签离</button>';
+        html += '<button class="btn-delete" onclick="deleteVisitor(' + v.id + ')">删除</button>';
+        html += '</div></div>';
+      }
+      el.innerHTML = html;
+    }
+    
+    function formatDuration(seconds) {
+      if (!seconds || seconds <= 0) return '-';
+      if (seconds < 60) return Math.round(seconds) + '秒';
+      if (seconds < 3600) return Math.floor(seconds / 60) + '分钟';
+      var hours = Math.floor(seconds / 3600);
+      var mins = Math.floor((seconds % 3600) / 60);
+      return hours + '小时' + mins + '分钟';
+    }
+    
+    function showDetail(id) {
+      var v = null;
+      for (var i = 0; i < allData.length; i++) {
+        if (allData[i].id === id) { v = allData[i]; break; }
+      }
+      if (!v) return;
+      
+      var photoHtml = v.photo_path ? '<img src="' + v.photo_path + '" style="width:100px;height:100px;border-radius:12px;object-fit:cover;margin:0 auto 16px;display:block;">' : '';
+      var code = v.code || '';
+      var codeHtml = code ? '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px;"><span style="font-size:24px;font-weight:700;color:#3b82f6;">' + code + '</span></div>' : '';
+      
+      var html = photoHtml + codeHtml;
+      html += '<div class="detail-row"><div class="detail-label">姓名</div><div class="detail-value">' + v.name + '</div></div>';
+      html += '<div class="detail-row"><div class="detail-label">手机号</div><div class="detail-value">' + v.phone + '</div></div>';
+      html += '<div class="detail-row"><div class="detail-label">身份</div><div class="detail-value">' + (v.identity || '-') + '</div></div>';
+      
+      if (v.identity === '家长') {
+        html += '<div class="detail-row"><div class="detail-label">目的</div><div class="detail-value">' + (v.purpose || '-') + '</div></div>';
+        if (v.class_info || v.student_info) html += '<div class="detail-row"><div class="detail-label">学生</div><div class="detail-value">' + (v.class_info || '') + ' ' + (v.student_info || '') + '</div></div>';
+      } else if (v.identity === '维修工') {
+        html += '<div class="detail-row"><div class="detail-label">公司</div><div class="detail-value">' + (v.company || '-') + '</div></div>';
+        html += '<div class="detail-row"><div class="detail-label">维修内容</div><div class="detail-value">' + (v.reason || '-') + '</div></div>';
+      } else if (v.identity === '外来老师') {
+        html += '<div class="detail-row"><div class="detail-label">来自</div><div class="detail-value">' + (v.from_school || '-') + '</div></div>';
+        html += '<div class="detail-row"><div class="detail-label">目的</div><div class="detail-value">' + (v.purpose || '-') + '</div></div>';
+      }
+      
+      if (v.host) html += '<div class="detail-row"><div class="detail-label">被访人</div><div class="detail-value">' + v.host + '</div></div>';
+      html += '<div class="detail-row"><div class="detail-label">签到时间</div><div class="detail-value">' + formatDateTime(v.checkin_at) + '</div></div>';
+      if (v.checkout_at) {
+        html += '<div class="detail-row"><div class="detail-label">签离时间</div><div class="detail-value">' + formatDateTime(v.checkout_at) + '</div></div>';
+        var seconds = (new Date(v.checkout_at) - new Date(v.checkin_at)) / 1000;
+        html += '<div class="detail-row"><div class="detail-label">本次时长</div><div class="detail-value">' + formatDuration(seconds) + '</div></div>';
+      }
+      
+      var key = v.name + '|' + v.phone;
+      var sameNameRecords = allData.filter(function(r) { return r.name + '|' + r.phone === key; });
+      var totalSeconds = 0;
+      for (var j = 0; j < sameNameRecords.length; j++) {
+        if (sameNameRecords[j].checkout_at) {
+          totalSeconds += (new Date(sameNameRecords[j].checkout_at) - new Date(sameNameRecords[j].checkin_at)) / 1000;
+        }
+      }
+      var visitCount = sameNameRecords.length;
+      html += '<div class="detail-row"><div class="detail-label">累计次数</div><div class="detail-value">共 ' + visitCount + ' 次来访</div></div>';
+      html += '<div class="detail-row"><div class="detail-label">累计时长</div><div class="detail-value">' + formatDuration(totalSeconds) + '</div></div>';
+      
+      document.getElementById('detailContent').innerHTML = html;
+      document.getElementById('detailModal').classList.add('show');
+    }
+    
+    function closeDetail() {
+      document.getElementById('detailModal').classList.remove('show');
+    }
+    
+    function copyCode(code) {
+      if (!code) return;
+      navigator.clipboard.writeText(code).then(function() {
+        alert('访客码已复制');
+      }).catch(function() {
+        alert('复制失败，请手动复制');
+      });
+    }
+    
+    document.getElementById('detailModal').addEventListener('click', function(e) {
+      if (e.target === this) closeDetail();
+    });
+    
+    function renderStats() {
+      var today = new Date().toISOString().slice(0, 10);
+      var total = allData.length;
+      var todayCount = allData.filter(function(v) { return v.checkin_at && v.checkin_at.slice(0, 10) === today; }).length;
+      
+      var totalSeconds = 0, countWithCheckout = 0;
+      allData.forEach(function(v) {
+        if (v.checkout_at) {
+          totalSeconds += (new Date(v.checkout_at) - new Date(v.checkin_at)) / 1000;
+          countWithCheckout++;
+        }
+      });
+      var avgMinutes = countWithCheckout > 0 ? Math.round(totalSeconds / countWithCheckout / 60) : 0;
+      
+      var hostMap = {};
+      allData.forEach(function(v) {
+        if (v.host) {
+          hostMap[v.host] = (hostMap[v.host] || 0) + 1;
+        }
+      });
+      var topHost = Object.entries(hostMap).sort(function(a, b) { return b[1] - a[1]; })[0];
+      
+      document.getElementById('totalVisits').textContent = total;
+      document.getElementById('todayVisits').textContent = todayCount;
+      document.getElementById('avgDuration').textContent = avgMinutes + '分钟';
+      document.getElementById('topHost').textContent = topHost ? topHost[0] : '-';
+      
+      var visitorMap = {};
+      allData.forEach(function(v) {
+        var key = v.name + '|' + v.phone;
+        visitorMap[key] = (visitorMap[key] || 0) + 1;
+      });
+      var sorted = Object.entries(visitorMap).sort(function(a, b) { return b[1] - a[1]; });
+      
+      var rankHtml = '';
+      for (var i = 0; i < Math.min(10, sorted.length); i++) {
+        rankHtml += '<tr><td>' + (i+1) + '</td><td>' + sorted[i][0].split('|')[0] + '</td><td>' + sorted[i][1] + ' 次</td></tr>';
+      }
+      document.getElementById('rankTable').innerHTML = rankHtml || '<tr><td colspan="3" style="text-align:center;color:#999;">暂无</td></tr>';
+      
+      var hostSorted = Object.entries(hostMap).sort(function(a, b) { return b[1] - a[1]; });
+      var hostHtml = '';
+      for (var i = 0; i < Math.min(10, hostSorted.length); i++) {
+        hostHtml += '<tr><td>' + (i+1) + '</td><td>' + hostSorted[i][0] + '</td><td>' + hostSorted[i][1] + ' 次</td></tr>';
+      }
+      document.getElementById('hostRankTable').innerHTML = hostHtml || '<tr><td colspan="3" style="text-align:center;color:#999;">暂无</td></tr>';
+      
+      loadInterviewStats();
+      renderCharts();
+    }
+    
+    async function loadInterviewStats() {
+      try {
+        var res = await fetch('/api/interview-stats');
+        var stats = await res.json();
+        var html = '';
+        if (stats && stats.length > 0) {
+          for (var i = 0; i < Math.min(10, stats.length); i++) {
+            html += '<tr><td>' + (i+1) + '</td><td>' + stats[i].person_name + '</td><td>' + stats[i].count + ' 次</td></tr>';
+          }
+        } else {
+          html = '<tr><td colspan="3" style="text-align:center;color:#999;">暂无</td></tr>';
+        }
+        document.getElementById('interviewRankTable').innerHTML = html;
+      } catch(e) {
+        document.getElementById('interviewRankTable').innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999;">暂无</td></tr>';
+      }
+    }
+    
+    function renderCharts() {
+      var days = [], counts = [];
+      for (var i = 6; i >= 0; i--) {
+        var d = new Date();
+        d.setDate(d.getDate() - i);
+        var date = d.toISOString().slice(0, 10);
+        days.push(date.slice(5));
+        counts.push(allData.filter(function(v) { return v.checkin_at && v.checkin_at.slice(0, 10) === date; }).length);
+      }
+      
+      if (trendChart) trendChart.destroy();
+      trendChart = new Chart(document.getElementById('trendChart').getContext('2d'), {
+        type: 'bar',
+        data: { labels: days, datasets: [{ label: '访问人次', data: counts, backgroundColor: '#3b82f6', borderRadius: 6 }] },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
+    }
+    
+    async function checkout(id) {
+      if (!confirm('确定要签离吗？')) return;
+      var res = await fetch('/api/visitors/' + id, { method: 'PATCH' });
+      if (res.ok) loadData();
+    }
+    
+    async function deleteVisitor(id) {
+      if (!confirm('确定要删除吗？')) return;
+      var res = await fetch('/api/visitors/' + id, { method: 'DELETE' });
+      if (res.ok) { alert('删除成功'); loadData(); }
+    }
+    
+    async function exportExcel() {
+      window.location.href = '/api/export';
+    }
+    
+    function formatDateTime(dateStr) {
+      if (!dateStr) return '';
+      var d = new Date(dateStr);
+      return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+    function pad(n) { return n < 10 ? '0' + n : n; }
+    
+    loadData();
+  </script>
+</body>
+</html>

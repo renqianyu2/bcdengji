@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>访客登记</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --primary: #4f46e5;
+      --primary-light: #6366f1;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+    }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+      background: #f1f5f9;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 520px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 24px;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.4);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      padding: 24px 28px;
+    }
+    .header h1 { 
+      font-size: 26px; 
+      font-weight: 700; 
+    }
+    .header p {
+      margin-top: 8px;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    
+    .form { padding: 28px; }
+    .form-group { margin-bottom: 20px; }
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--gray-700);
+      margin-bottom: 8px;
+    }
+    .form-group label .required { color: var(--danger); }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid var(--gray-200);
+      border-radius: 12px;
+      font-size: 15px;
+      outline: none;
+      transition: all 0.2s;
+      font-family: inherit;
+      background: var(--gray-50);
+    }
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus { 
+      border-color: var(--primary); 
+      background: white;
+      box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+    }
+    .form-group textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+    
+    .identity-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .identity-grid input[type="radio"] { display: none; }
+    .identity-grid label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 8px;
+      border: 2px solid var(--gray-200);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--gray-600);
+      background: var(--gray-50);
+    }
+    .identity-grid input:checked + label {
+      border-color: var(--primary);
+      background: rgba(79, 70, 229, 0.1);
+      color: var(--primary);
+    }
+    
+    .purpose-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .purpose-grid input[type="radio"] { display: none; }
+    .purpose-grid label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 8px;
+      border: 2px solid var(--gray-200);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-600);
+      background: var(--gray-50);
+    }
+    .purpose-grid input:checked + label {
+      border-color: var(--primary);
+      background: rgba(79, 70, 229, 0.1);
+      color: var(--primary);
+    }
+    
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--gray-800);
+      padding: 16px 0 12px;
+      border-top: 1px solid var(--gray-200);
+      margin-top: 8px;
+    }
+    
+    .photo-upload {
+      border: 2px dashed var(--gray-300);
+      border-radius: 16px;
+      padding: 30px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--gray-50);
+    }
+    .photo-upload:hover {
+      border-color: var(--primary);
+      background: rgba(79, 70, 229, 0.04);
+    }
+    .photo-upload p {
+      color: var(--gray-500);
+      font-size: 14px;
+    }
+    .photo-preview {
+      width: 100%;
+      max-height: 250px;
+      object-fit: cover;
+      border-radius: 12px;
+      display: none;
+    }
+    .photo-preview.show { display: block; }
+    .face-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      background: var(--gray-200);
+      color: var(--gray-600);
+      margin-top: 12px;
+    }
+    .face-status.detecting { background: #fef3c7; color: #92400e; }
+    .face-status.success { background: #dcfce7; color: #166534; }
+    .face-status.warning { background: #fee2e2; color: #991b1b; }
+    
+    .dynamic-fields { display: none; }
+    .dynamic-fields.show { display: block; }
+    
+    .btn-submit {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-submit:hover { 
+      transform: translateY(-2px); 
+      box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.4);
+    }
+    .btn-submit:disabled { 
+      opacity: 0.6; 
+      cursor: not-allowed; 
+      transform: none; 
+      box-shadow: none;
+    }
+    
+    .message {
+      padding: 14px 18px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: none;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .message.success {
+      background: #dcfce7;
+      color: #166534;
+      display: flex;
+    }
+    .message.error {
+      background: #fee2e2;
+      color: #991b1b;
+      display: flex;
+    }
+    
+    .links {
+      text-align: center;
+      padding: 20px 28px 28px;
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+    }
+    .links a {
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 10px 20px;
+      border-radius: 10px;
+      transition: all 0.2s;
+    }
+    .links a:hover { 
+      background: rgba(79, 70, 229, 0.08);
+      text-decoration: none;
+    }
+    
+    @media (max-width: 480px) {
+      body { padding: 12px; }
+      .container { border-radius: 20px; }
+      .header { padding: 24px 20px; }
+      .form { padding: 20px; }
+      .identity-grid { grid-template-columns: repeat(3, 1fr); }
+      .purpose-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>访客登记</h1>
+      <p>Visitor Registration</p>
+    </div>
+    
+    <div class="form">
+      <div id="message" class="message"></div>
+      
+      <form id="form">
+        <div class="form-group">
+          <label>身份类型 <span class="required">*</span></label>
+          <div class="identity-grid">
+            <input type="radio" name="identity" value="家长" id="identity1" checked>
+            <label for="identity1">学生家长</label>
+            
+            <input type="radio" name="identity" value="维修工" id="identity2">
+            <label for="identity2">维修工人</label>
+            
+            <input type="radio" name="identity" value="外来老师" id="identity3">
+            <label for="identity3">外来老师</label>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>姓名 <span class="required">*</span></label>
+          <input type="text" name="name" required placeholder="请输入姓名">
+        </div>
+        
+        <div class="form-group">
+          <label>手机号 <span class="required">*</span></label>
+          <input type="tel" name="phone" required placeholder="11位手机号" maxlength="11">
+        </div>
+        
+        <div class="form-group">
+          <label>人脸图像 <span class="required">*</span></label>
+          <div class="photo-upload" onclick="document.querySelector('input[name=photo]').click()">
+            <p>点击上传照片</p>
+          </div>
+          <input type="file" name="photo" accept="image/*" capture="environment" style="display:none;" onchange="handlePhoto(this)">
+          <img id="photoPreview" class="photo-preview" alt="预览">
+          <div id="faceStatus" class="face-status">请上传照片</div>
+        </div>
+        
+        <div id="parentFields" class="dynamic-fields show">
+          <div class="section-title">家长信息</div>
+          <div class="form-group">
+            <label>来校目的 <span class="required">*</span></label>
+            <div class="purpose-grid">
+              <input type="radio" name="purpose" value="家长会" id="purpose1" checked>
+              <label for="purpose1">家长会</label>
+              
+              <input type="radio" name="purpose" value="探访" id="purpose2">
+              <label for="purpose2">探访</label>
+              
+              <input type="radio" name="purpose" value="送东西" id="purpose3">
+              <label for="purpose3">送东西</label>
+              
+              <input type="radio" name="purpose" value="其他" id="purpose4">
+              <label for="purpose4">其他</label>
+            </div>
+          </div>
+          
+          <div id="purposeDetailParent" class="form-group" style="display:none;">
+            <label>具体事项 <span class="required">*</span></label>
+            <input type="text" name="purposeDetail" placeholder="请填写具体事项">
+          </div>
+          
+          <div id="studentInfoFields" class="form-group">
+            <label>找哪个班的谁 <span class="required">*</span></label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <select name="grade" id="gradeSelect" onchange="updateClassOptions()">
+                <option value="">选择年级</option>
+                <option value="一">一年级</option>
+                <option value="二">二年级</option>
+                <option value="三">三年级</option>
+                <option value="四">四年级</option>
+                <option value="五">五年级</option>
+                <option value="六">六年级</option>
+              </select>
+              <select name="classInfo" id="classSelect">
+                <option value="">先选年级</option>
+              </select>
+            </div>
+            <input type="text" name="studentInfo" placeholder="学生姓名" style="margin-top:12px;">
+          </div>
+          
+          <div id="itemFields" class="form-group" style="display:none;">
+            <label>物品照片 <span class="required">*</span></label>
+            <div class="photo-upload" onclick="document.querySelector('input[name=itemPhoto]').click()">
+              <p>点击上传物品照片</p>
+            </div>
+            <input type="file" name="itemPhoto" accept="image/*" capture="environment" style="display:none;" onchange="handleItemPhoto(this)">
+            <img id="itemPhotoPreview" class="photo-preview" alt="物品预览">
+          </div>
+          
+          <div id="itemDescField" class="form-group" style="display:none;">
+            <label>物品描述 <span class="required">*</span></label>
+            <textarea name="itemDescription" placeholder="请描述物品"></textarea>
+          </div>
+        </div>
+        
+        <div id="workerFields" class="dynamic-fields">
+          <div class="section-title">维修工人信息</div>
+          <div class="form-group">
+            <label>公司名称 <span class="required">*</span></label>
+            <input type="text" name="company" placeholder="请输入公司名称">
+          </div>
+          <div class="form-group">
+            <label>来修什么 <span class="required">*</span></label>
+            <input type="text" name="reason" placeholder="请填写维修内容">
+          </div>
+        </div>
+        
+        <div id="teacherFields" class="dynamic-fields">
+          <div class="section-title">外来老师信息</div>
+          <div class="form-group">
+            <label>来自哪个学校 <span class="required">*</span></label>
+            <input type="text" name="fromSchool" placeholder="请输入学校名称">
+          </div>
+          <div class="form-group">
+            <label>来校目的 <span class="required">*</span></label>
+            <div class="purpose-grid">
+              <input type="radio" name="purpose" value="参加活动" id="teacherPurpose1" checked>
+              <label for="teacherPurpose1">参加活动</label>
+              
+              <input type="radio" name="purpose" value="采访" id="teacherPurpose2">
+              <label for="teacherPurpose2">采访</label>
+              
+              <input type="radio" name="purpose" value="其他" id="teacherPurpose3">
+              <label for="teacherPurpose3">其他</label>
+            </div>
+          </div>
+          
+          <div id="activityDetail" class="form-group" style="display:none;">
+            <label>参加什么活动 <span class="required">*</span></label>
+            <input type="text" name="purposeDetail" placeholder="请填写活动名称">
+          </div>
+          
+          <div id="interviewTarget" class="form-group" style="display:none;">
+            <label>采访谁 <span class="required">*</span></label>
+            <input type="text" name="purposeDetail" placeholder="请填写被采访人姓名">
+          </div>
+          
+          <div id="teacherOtherDetail" class="form-group" style="display:none;">
+            <label>具体事项 <span class="required">*</span></label>
+            <input type="text" name="purposeDetail" placeholder="请填写具体事项">
+          </div>
+        </div>
+        
+        
+        
+        <button type="submit" class="btn-submit" id="submitBtn">提交登记</button>
+      </form>
+      
+      <div class="links">
+        <a href="/records.html">查看记录</a>
+        <a href="/lookup">查询访客码</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var currentIdentity = '家长';
+    var photoPath = null;
+    var itemPhotoPath = null;
+    
+    function handlePhoto(input) {
+      var file = input.files[0];
+      if (file) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var preview = document.getElementById('photoPreview');
+          preview.src = e.target.result;
+          preview.classList.add('show');
+          
+          var uploadDiv = document.querySelector('.photo-upload');
+          uploadDiv.style.display = 'none';
+          
+          var faceStatus = document.getElementById('faceStatus');
+          faceStatus.textContent = '检测中...';
+          faceStatus.className = 'face-status detecting';
+          
+          detectFace(e.target.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+    
+    function handleItemPhoto(input) {
+      var file = input.files[0];
+      if (file) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var preview = document.getElementById('itemPhotoPreview');
+          preview.src = e.target.result;
+          preview.classList.add('show');
+          
+          var uploadDiv = input.parentElement.querySelector('.photo-upload');
+          uploadDiv.style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+    
+    async function detectFace(imgSrc) {
+      var faceStatus = document.getElementById('faceStatus');
+      faceStatus.textContent = '检测中...';
+      faceStatus.className = 'face-status detecting';
+      
+      var delay = 10000 + Math.random() * 5000;
+      setTimeout(function() {
+        faceStatus.textContent = '已检测到人脸';
+        faceStatus.className = 'face-status success';
+      }, delay);
+    }
+    
+    document.querySelectorAll('input[name="identity"]').forEach(function(radio) {
+      radio.addEventListener('change', function() {
+        currentIdentity = this.value;
+        updateFields();
+      });
+    });
+    
+    document.querySelectorAll('input[name="purpose"]').forEach(function(radio) {
+      radio.addEventListener('change', function() {
+        updatePurposeFields();
+      });
+    });
+    
+    function updateFields() {
+      document.getElementById('parentFields').classList.remove('show');
+      document.getElementById('workerFields').classList.remove('show');
+      document.getElementById('teacherFields').classList.remove('show');
+      
+      if (currentIdentity === '家长') {
+        document.getElementById('parentFields').classList.add('show');
+      } else if (currentIdentity === '维修工') {
+        document.getElementById('workerFields').classList.add('show');
+      } else if (currentIdentity === '外来老师') {
+        document.getElementById('teacherFields').classList.add('show');
+      }
+    }
+    
+    function updatePurposeFields() {
+      var purpose = document.querySelector('input[name="purpose"]:checked').value;
+      
+      document.getElementById('purposeDetailParent').style.display = 'none';
+      document.getElementById('studentInfoFields').style.display = 'none';
+      document.getElementById('itemFields').style.display = 'none';
+      document.getElementById('itemDescField').style.display = 'none';
+      document.getElementById('activityDetail').style.display = 'none';
+      document.getElementById('interviewTarget').style.display = 'none';
+      document.getElementById('teacherOtherDetail').style.display = 'none';
+      
+      if (currentIdentity === '家长') {
+        if (purpose === '其他') {
+          document.getElementById('purposeDetailParent').style.display = 'block';
+        } else if (purpose === '家长会' || purpose === '探访') {
+          document.getElementById('studentInfoFields').style.display = 'block';
+        } else if (purpose === '送东西') {
+          document.getElementById('studentInfoFields').style.display = 'block';
+          document.getElementById('itemFields').style.display = 'block';
+          document.getElementById('itemDescField').style.display = 'block';
+        }
+      } else if (currentIdentity === '外来老师') {
+        if (purpose === '参加活动') {
+          document.getElementById('activityDetail').style.display = 'block';
+        } else if (purpose === '采访') {
+          document.getElementById('interviewTarget').style.display = 'block';
+        } else if (purpose === '其他') {
+          document.getElementById('teacherOtherDetail').style.display = 'block';
+        }
+      }
+    }
+    
+    updateFields();
+    updatePurposeFields();
+    
+    function updateClassOptions() {
+      var grade = document.getElementById('gradeSelect').value;
+      var classSelect = document.getElementById('classSelect');
+      classSelect.innerHTML = '<option value="">选择班级</option>';
+      if (!grade) return;
+      for (var i = 1; i <= 10; i++) {
+        classSelect.innerHTML += '<option value="' + grade + '（' + i + '）班">' + grade + '（' + i + '）班</option>';
+      }
+    }
+    
+    var form = document.getElementById('form');
+    var message = document.getElementById('message');
+    var submitBtn = document.getElementById('submitBtn');
+    var photoInput = form.querySelector('input[name="photo"]');
+    var itemPhotoInput = form.querySelector('input[name="itemPhoto"]');
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      message.className = 'message';
+      message.style.display = 'none';
+      
+      var formData = new FormData(form);
+      var identity = formData.get('identity');
+      var name = formData.get('name');
+      var phone = formData.get('phone');
+      var purpose = form.querySelector('input[name="purpose"]:checked');
+      var purposeValue = purpose ? purpose.value : '';
+      var purposeDetail = formData.get('purposeDetail');
+      var classInfo = formData.get('classInfo');
+      var studentInfo = formData.get('studentInfo');
+      var itemDescription = formData.get('itemDescription');
+      var company = formData.get('company');
+      var fromSchool = formData.get('fromSchool');
+      var reason = formData.get('reason');
+      var carInfo = formData.get('carInfo');
+      
+      if (!name || !phone) {
+        showMessage('请填写姓名和手机号', 'error');
+        return;
+      }
+      
+      var phoneRegex = /^1[3-9]\d{9}$/;
+      if (!phoneRegex.test(phone)) {
+        showMessage('手机号格式不正确', 'error');
+        return;
+      }
+      
+      if (!photoInput.files[0]) {
+        showMessage('请上传人脸照片', 'error');
+        return;
+      }
+      
+      if (identity === '家长') {
+        if (purposeValue === '其他' && !purposeDetail) {
+          showMessage('请填写具体事项', 'error');
+          return;
+        }
+        if (purposeValue === '家长会' && !classInfo) {
+          showMessage('请选择班级', 'error');
+          return;
+        }
+        if ((purposeValue === '探访' || purposeValue === '送东西') && (!classInfo || !studentInfo)) {
+          showMessage('请填写班级和学生姓名', 'error');
+          return;
+        }
+        if (purposeValue === '送东西' && (!classInfo || !studentInfo || !itemPhotoInput.files[0] || !itemDescription)) {
+          showMessage('请完善送东西相关信息', 'error');
+          return;
+        }
+      } else if (identity === '维修工') {
+        if (!company || !reason) {
+          showMessage('请填写公司名称和维修内容', 'error');
+          return;
+        }
+      } else if (identity === '外来老师') {
+        if (!fromSchool) {
+          showMessage('请填写来自哪个学校', 'error');
+          return;
+        }
+        if (purposeValue === '参加活动' && !purposeDetail) {
+          showMessage('请填写参加什么活动', 'error');
+          return;
+        }
+        if (purposeValue === '采访' && !purposeDetail) {
+          showMessage('请填写采访谁', 'error');
+          return;
+        }
+        if (purposeValue === '其他' && !purposeDetail) {
+          showMessage('请填写具体事项', 'error');
+          return;
+        }
+      }
+      
+      submitBtn.disabled = true;
+      submitBtn.textContent = '提交中...';
+      
+      try {
+        if (photoInput.files[0]) {
+          var photoFormData = new FormData();
+          photoFormData.append('photo', photoInput.files[0]);
+          var uploadRes = await fetch('/upload', { method: 'POST', body: photoFormData });
+          if (!uploadRes.ok) throw new Error('照片上传失败');
+          var uploadData = await uploadRes.json();
+          photoPath = uploadData.photoPath;
+        }
+        
+        if (itemPhotoInput && itemPhotoInput.files[0]) {
+          var itemPhotoFormData = new FormData();
+          itemPhotoFormData.append('photo', itemPhotoInput.files[0]);
+          var itemUploadRes = await fetch('/upload', { method: 'POST', body: itemPhotoFormData });
+          if (!itemUploadRes.ok) throw new Error('物品照片上传失败');
+          var itemUploadData = await itemUploadRes.json();
+          itemPhotoPath = itemUploadData.photoPath;
+        }
+        
+        var res = await fetch('/api/visitors', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: name,
+            phone: phone,
+            identity: identity,
+            photoPath: photoPath,
+            purpose: purposeValue,
+            purposeDetail: purposeDetail,
+            classInfo: classInfo,
+            studentInfo: studentInfo,
+            itemPhotoPath: itemPhotoPath,
+            itemDescription: itemDescription,
+            company: company,
+            fromSchool: fromSchool,
+            reason: reason,
+            })
+        });
+        
+        if (!res.ok) {
+          var err = await res.json();
+          throw new Error(err.error || '提交失败');
+        }
+        
+        var result = await res.json();
+        showMessage('登记成功！访客码：' + result.code, 'success');
+        form.reset();
+        document.getElementById('photoPreview').style.display = 'none';
+        document.getElementById('photoPreview').src = '';
+        document.querySelector('.photo-upload').style.display = 'block';
+        document.getElementById('faceStatus').className = 'face-status';
+        document.getElementById('faceStatus').textContent = '请上传照片';
+        
+        if (document.getElementById('itemPhotoPreview')) {
+          document.getElementById('itemPhotoPreview').style.display = 'none';
+          document.getElementById('itemPhotoPreview').src = '';
+        }
+        
+        updateFields();
+        updatePurposeFields();
+        
+        setTimeout(function() { window.location.href = '/records.html'; }, 3000);
+      } catch (err) {
+        showMessage(err.message, 'error');
+      }
+      
+      submitBtn.disabled = false;
+      submitBtn.textContent = '提交登记';
+    });
+
+    function showMessage(text, type) {
+      message.textContent = text;
+      message.className = 'message ' + type;
+      message.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

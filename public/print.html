@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>打印凭证</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+      background: #f5f5f5;
+      min-height: 100vh;
+    }
+    
+    .header {
+      background: white;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #eee;
+    }
+    .header h1 { font-size: 18px; color: #333; }
+    .header a { color: #3b82f6; text-decoration: none; font-size: 14px; }
+    
+    .toolbar {
+      background: white;
+      padding: 12px 16px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .toolbar select, .toolbar button {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .toolbar button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+    }
+    .toolbar button.secondary {
+      background: white;
+      color: #333;
+      border: 1px solid #ddd;
+    }
+    
+    .list { 
+      padding: 16px; 
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    
+    .badge-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      width: 220px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      position: relative;
+      border: 2px solid #3b82f6;
+    }
+    .badge-card input[type="checkbox"] {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 24px;
+      height: 24px;
+    }
+    
+    .badge-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    
+    .badge-name { 
+      font-size: 24px; 
+      font-weight: 700; 
+      color: #1f2937; 
+      margin-bottom: 8px;
+    }
+    .badge-code { 
+      font-size: 28px; 
+      color: #3b82f6; 
+      font-weight: 900; 
+      letter-spacing: 4px;
+    }
+    .badge-type { 
+      display: inline-block;
+      background: #3b82f6;
+      color: white;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 16px;
+      font-weight: 600;
+      margin-top: 12px;
+    }
+    
+    .actions {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    .actions button {
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .actions .btn-print { background: #22c55e; color: white; border: none; }
+    .actions .btn-select { background: white; color: #333; border: 1px solid #ddd; }
+    
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+    
+    @media print {
+      .header, .toolbar, .actions, .badge-card input { display: none; }
+      body { background: white; padding: 10px; }
+      .list { padding: 0; display: flex; flex-wrap: wrap; gap: 12px; }
+      .badge-card { 
+        break-inside: avoid; 
+        display: inline-block;
+        width: 260px;
+        height: 160px;
+        margin: 6px;
+        border: 3px solid #3b82f6;
+        border-radius: 12px;
+        page-break-inside: avoid;
+        vertical-align: top;
+        padding: 20px;
+      }
+      .badge-card .badge-name { font-size: 28px; }
+      .badge-card .badge-code { font-size: 32px; }
+      .badge-card .badge-type { font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>访客凭证</h1>
+    <a href="/records.html">← 返回</a>
+  </div>
+  
+  <div class="toolbar">
+    <select id="statusFilter" onchange="loadData()">
+      <option value="all">全部状态</option>
+      <option value="current">在访中</option>
+      <option value="checked">已签离</option>
+    </select>
+    <select id="typeFilter" onchange="loadData()">
+      <option value="">全部身份</option>
+      <option value="家长">学生家长</option>
+      <option value="维修工">维修工人</option>
+      <option value="外来老师">外来老师</option>
+    </select>
+  </div>
+  
+  <div class="list" id="badgeList">
+    <div class="empty">加载中...</div>
+  </div>
+  
+  <div class="actions">
+    <button class="btn-select" onclick="selectAll()">全选</button>
+    <button class="btn-print" onclick="printSelected()">打印选中</button>
+  </div>
+
+  <script>
+    var allData = [];
+    var selectedIds = new Set();
+    
+    async function loadData() {
+      var status = document.getElementById('statusFilter').value;
+      var type = document.getElementById('typeFilter').value;
+      
+      var url = '/api/visitors?page=1&pageSize=200';
+      var res = await fetch(url);
+      var data = await res.json();
+      allData = data.data || [];
+      
+      if (status === 'current') {
+        allData = allData.filter(function(v) { return !v.checkout_at; });
+      } else if (status === 'checked') {
+        allData = allData.filter(function(v) { return !!v.checkout_at; });
+      }
+      
+      if (type) {
+        allData = allData.filter(function(v) { return v.identity === type; });
+      }
+      
+      render();
+    }
+    
+    function render() {
+      var grid = document.getElementById('badgeList');
+      
+      if (allData.length === 0) {
+        grid.innerHTML = '<div class="empty">暂无记录</div>';
+        return;
+      }
+      
+      var html = '';
+      for (var i = 0; i < allData.length; i++) {
+        var v = allData[i];
+        
+        html += '<div class="badge-card">';
+        html += '<input type="checkbox" ' + (selectedIds.has(v.id) ? 'checked' : '') + ' onchange="toggleSelect(' + v.id + ')">';
+        html += '<div class="badge-header">';
+        html += '<div class="badge-name">' + v.name + '</div>';
+        html += '<div class="badge-code">' + (v.code || '-') + '</div>';
+        html += '<span class="badge-type">' + (v.identity || '访客') + '</span>';
+        html += '</div></div>';
+      }
+      
+      grid.innerHTML = html;
+    }
+    
+    function toggleSelect(id) {
+      if (selectedIds.has(id)) {
+        selectedIds.delete(id);
+      } else {
+        selectedIds.add(id);
+      }
+    }
+    
+    function selectAll() {
+      if (selectedIds.size === allData.length) {
+        selectedIds.clear();
+      } else {
+        selectedIds.clear();
+        for (var i = 0; i < allData.length; i++) {
+          selectedIds.add(allData[i].id);
+        }
+      }
+      render();
+    }
+    
+    function printSelected() {
+      if (selectedIds.size === 0) {
+        selectAll();
+        setTimeout(function() { window.print(); }, 100);
+      } else {
+        window.print();
+      }
+    }
+    
+    loadData();
+  </script>
+</body>
+</html>
