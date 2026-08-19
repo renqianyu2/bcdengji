@@ -5,255 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>访客管理</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-      background: #f5f7fa;
-      min-height: 100vh;
-    }
-    
-    .header {
-      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-      color: white;
-      padding: 16px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-    .header h1 { font-size: 18px; }
-    .header-links { display: flex; gap: 12px; }
-    .header-links a { color: white; text-decoration: none; font-size: 14px; opacity: 0.9; }
-    
-    .tabs {
-      background: white;
-      display: flex;
-      border-bottom: 1px solid #e5e7eb;
-      position: sticky;
-      top: 54px;
-      z-index: 99;
-    }
-    .tab {
-      flex: 1;
-      padding: 14px;
-      text-align: center;
-      background: none;
-      border: none;
-      font-size: 15px;
-      color: #6b7280;
-      cursor: pointer;
-      border-bottom: 3px solid transparent;
-    }
-    .tab.active { color: #3b82f6; border-bottom-color: #3b82f6; font-weight: 600; }
-    
-    .toolbar {
-      background: white;
-      padding: 12px 16px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      border-bottom: 1px solid #e5e7eb;
-    }
-    .toolbar input, .toolbar select {
-      padding: 10px 12px;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      font-size: 14px;
-    }
-    .toolbar input { flex: 1; min-width: 120px; }
-    .toolbar select { min-width: 100px; }
-    .toolbar button {
-      padding: 10px 16px;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-    .btn-primary { background: #3b82f6; color: white; }
-    .btn-secondary { background: #f3f4f6; color: #374151; }
-    .btn-success { background: #22c55e; color: white; }
-    
-    .stats-bar {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      padding: 16px;
-      background: white;
-      margin-bottom: 10px;
-    }
-    .stat-item {
-      text-align: center;
-      padding: 12px;
-      background: #f8fafc;
-      border-radius: 10px;
-    }
-    .stat-item .num { font-size: 24px; font-weight: 700; color: #3b82f6; }
-    .stat-item .label { font-size: 12px; color: #6b7280; margin-top: 4px; }
-    
-    .visitor-list { padding: 12px; }
-    
-    .visitor-card {
-      background: white;
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .visitor-card .avatar {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background: #e0e7ff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      color: #3b82f6;
-      flex-shrink: 0;
-      overflow: hidden;
-    }
-    .visitor-card .avatar img { width: 100%; height: 100%; object-fit: cover; }
-    
-    .visitor-card .info { flex: 1; min-width: 0; }
-    .visitor-card .name { font-size: 16px; font-weight: 600; color: #1f2937; }
-    .visitor-card .meta { font-size: 13px; color: #6b7280; margin-top: 2px; }
-    .visitor-card .tags { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
-    .visitor-card .tag {
-      font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 10px;
-      background: #e0e7ff;
-      color: #3b82f6;
-    }
-    .visitor-card .tag.green { background: #dcfce7; color: #16a34a; }
-    
-    .visitor-card .actions {
-      display: flex;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-    .visitor-card .actions button {
-      padding: 8px 12px;
-      border: none;
-      border-radius: 6px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    .btn-detail { background: #3b82f6; color: white; }
-    .btn-checkout { background: #ef4444; color: white; }
-    .btn-delete { background: #6b7280; color: white; }
-    
-    .empty { text-align: center; padding: 60px 20px; color: #9ca3af; }
-    
-    .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.5);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-      padding: 20px;
-    }
-    .modal-overlay.show { display: flex; }
-    
-    .modal {
-      background: white;
-      border-radius: 16px;
-      width: 100%;
-      max-width: 400px;
-      max-height: 90vh;
-      overflow: auto;
-    }
-    .modal-header {
-      padding: 16px 20px;
-      border-bottom: 1px solid #eee;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .modal-header h2 { font-size: 18px; color: #333; }
-    .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #999; }
-    .modal-body { padding: 20px; }
-    
-    .detail-row {
-      display: flex;
-      padding: 10px 0;
-      border-bottom: 1px solid #f0f0f0;
-    }
-    .detail-label { width: 80px; color: #999; font-size: 13px; }
-    .detail-value { flex: 1; color: #333; font-size: 13px; word-break: break-all; }
-    
-    .stats-section { padding: 16px; display: none; }
-    .stats-section.show { display: block; }
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-    .stat-card {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      text-align: center;
-    }
-    .stat-card h4 { font-size: 13px; color: #6b7280; }
-    .stat-card .value { font-size: 28px; font-weight: 700; color: #3b82f6; margin-top: 8px; }
-    .stat-card.orange .value { color: #f59e0b; }
-    
-    .chart-card {
-      background: white;
-      padding: 16px;
-      border-radius: 12px;
-      margin-bottom: 16px;
-    }
-    .chart-card h4 { font-size: 14px; color: #333; margin-bottom: 12px; }
-    
-    .rank-table {
-      background: white;
-      border-radius: 12px;
-      overflow: hidden;
-    }
-    .rank-table table { width: 100%; border-collapse: collapse; }
-    .rank-table th { background: #f8fafc; padding: 12px; text-align: left; font-size: 13px; color: #6b7280; }
-    .rank-table td { padding: 12px; border-top: 1px solid #f0f0f0; font-size: 14px; }
-    .rank-table td:first-child { color: #3b82f6; font-weight: 600; }
-    
-    @media (max-width: 600px) {
-      .header { padding: 12px 16px; }
-      .header h1 { font-size: 16px; }
-      .stats-bar { grid-template-columns: repeat(2, 1fr); }
-      .toolbar { flex-direction: column; }
-      .toolbar input, .toolbar select { width: 100%; }
-      .visitor-card { flex-wrap: wrap; }
-      .visitor-card .actions { width: 100%; justify-content: flex-end; margin-top: 10px; }
-    }
-  </style>
+  <link rel="stylesheet" href="/css/records.css">
 </head>
 <body>
   <div class="login-overlay" id="loginOverlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:9999;">
     <div style="background:white;padding:40px;border-radius:16px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-      <h2 style="margin-bottom:20px;">请输入密码</h2>
-      <input type="password" id="password" placeholder="请输入管理密码" style="padding:12px;border:2px solid #e1e5ee;border-radius:8px;width:200px;text-align:center;font-size:16px;">
+      <h2 style="margin-bottom:20px;">请输入管理密码</h2>
+      <input type="password" id="password" placeholder="请输入密码" style="padding:12px;border:2px solid #e1e5ee;border-radius:8px;width:200px;text-align:center;font-size:16px;">
       <br><br>
       <button onclick="checkPassword()" style="padding:12px 30px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;">确认</button>
       <p id="loginError" style="color:#ef4444;margin-top:10px;display:none;">密码错误</p>
+      <br>
+      <a href="/index.html" style="color:#3b82f6;font-size:13px;text-decoration:none;">← 返回登记页</a>
     </div>
   </div>
   
   <div class="main-content" id="mainContent" style="display:none;">
   <div class="header">
-    <h1>访客管理</h1>
+    <h1 id="schoolName">访客管理</h1>
     <div class="header-links">
-      <a href="/index.html">登记</a>
+      <a href="/index.html">返回登记页</a>
       <a href="/print">打印</a>
+      <a href="/config">管理页面</a>
     </div>
   </div>
   
@@ -334,6 +107,17 @@
   </div>
 
   <script>
+    async function applyConfig() {
+      try {
+        var res = await fetch('/api/config');
+        var cfg = await res.json();
+        var s = document.documentElement.style;
+        s.setProperty('--primary', cfg.theme.primary);
+        s.setProperty('--secondary', cfg.theme.secondary);
+        document.getElementById('schoolName').textContent = (cfg.schoolName || '访客管理') + ' · 访客管理';
+      } catch(e) {}
+    }
+
     function checkPassword() {
       if (document.getElementById('password').value === '1234') {
         document.getElementById('loginOverlay').style.display = 'none';
@@ -421,7 +205,7 @@
         var statusTag = v.checkout_at ? '<span class="tag green">已签离</span>' : '<span class="tag">在访中</span>';
         
         var info = '';
-        if (v.identity === '家长' && v.purpose) info = v.purpose;
+        if (v.identity === '家长') info = (v.host ? '访' + v.host : '') + (v.purpose ? (v.host ? ' · ' : '') + v.purpose : '');
         else if (v.identity === '维修工' && v.reason) info = v.reason;
         else if (v.identity === '外来老师' && v.purpose) info = v.purpose;
         
@@ -497,8 +281,8 @@
       html += '<div class="detail-row"><div class="detail-label">身份</div><div class="detail-value">' + (v.identity || '-') + '</div></div>';
       
       if (v.identity === '家长') {
-        html += '<div class="detail-row"><div class="detail-label">目的</div><div class="detail-value">' + (v.purpose || '-') + '</div></div>';
-        if (v.class_info || v.student_info) html += '<div class="detail-row"><div class="detail-label">学生</div><div class="detail-value">' + (v.class_info || '') + ' ' + (v.student_info || '') + '</div></div>';
+        html += '<div class="detail-row"><div class="detail-label">事由</div><div class="detail-value">' + (v.purpose || '-') + '</div></div>';
+        if (v.purpose_detail) html += '<div class="detail-row"><div class="detail-label">具体事项</div><div class="detail-value">' + v.purpose_detail + '</div></div>';
       } else if (v.identity === '维修工') {
         html += '<div class="detail-row"><div class="detail-label">公司</div><div class="detail-value">' + (v.company || '-') + '</div></div>';
         html += '<div class="detail-row"><div class="detail-label">维修内容</div><div class="detail-value">' + (v.reason || '-') + '</div></div>';
@@ -630,7 +414,7 @@
       if (trendChart) trendChart.destroy();
       trendChart = new Chart(document.getElementById('trendChart').getContext('2d'), {
         type: 'bar',
-        data: { labels: days, datasets: [{ label: '访问人次', data: counts, backgroundColor: '#3b82f6', borderRadius: 6 }] },
+        data: { labels: days, datasets: [{ label: '访问人次', data: counts, backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#3b82f6', borderRadius: 6 }] },
         options: { responsive: true, plugins: { legend: { display: false } } }
       });
     }
@@ -658,6 +442,7 @@
     }
     function pad(n) { return n < 10 ? '0' + n : n; }
     
+    applyConfig();
     loadData();
   </script>
 </body>

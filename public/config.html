@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>系统配置</title>
+  <link rel="stylesheet" href="/css/config.css">
+</head>
+<body>
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-box">
+      <h2>系统配置登录</h2>
+      <p class="login-sub">仅校长账号可登录配置</p>
+      <input type="text" id="loginUser" placeholder="账号">
+      <input type="password" id="loginPass" placeholder="密码">
+      <button class="btn-primary" onclick="doLogin()">登录</button>
+      <p class="login-error" id="loginError"></p>
+      <a href="/index.html" style="display:block;margin-top:14px;color:#3b82f6;font-size:13px;text-decoration:none;">← 返回登记页</a>
+    </div>
+  </div>
+
+  <div class="main" id="main" style="display:none;">
+    <div class="topbar">
+      <h1>访客登记系统 · 配置</h1>
+      <div class="topbar-actions">
+        <a class="btn-ghost" href="/index.html">返回登记页</a>
+        <button class="btn-primary" onclick="save()">保存配置</button>
+        <button class="btn-ghost" onclick="logout()">退出登录</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <section class="card">
+        <h2>学校信息</h2>
+        <div class="grid2">
+          <label class="field">
+            <span>学校名称</span>
+            <input type="text" id="schoolName">
+          </label>
+          <label class="field">
+            <span>联系电话</span>
+            <input type="text" id="contactPhone">
+          </label>
+        </div>
+        <label class="field">
+          <span>欢迎语 / 副标题</span>
+          <input type="text" id="welcomeText">
+        </label>
+        <div class="logo-row">
+          <div>
+            <span class="field-label">学校 Logo</span>
+            <img id="logoPreview" class="logo-preview" alt="logo">
+          </div>
+          <input type="file" id="logoInput" accept="image/*" style="display:none;" onchange="uploadLogo(this)">
+          <button class="btn-ghost" onclick="document.getElementById('logoInput').click()">上传 Logo</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>主题颜色</h2>
+        <div class="grid2">
+          <label class="field">
+            <span>主色</span>
+            <input type="color" id="themePrimary" oninput="previewTheme()">
+          </label>
+          <label class="field">
+            <span>辅助色</span>
+            <input type="color" id="themeSecondary" oninput="previewTheme()">
+          </label>
+        </div>
+        <div class="theme-preview" id="themePreview">
+          <div class="tp-header">头部示例</div>
+          <div class="tp-btn">按钮示例</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>身份类型</h2>
+        <p class="hint">勾选需要启用的身份类型，可修改显示名称，也可新增身份类型。</p>
+        <div id="identityList"></div>
+        <div class="add-user" style="margin-top:12px;">
+          <input type="text" id="newIdentityName" placeholder="新身份类型名称（如：访客）">
+          <button class="btn-primary" onclick="addIdentity()">添加身份</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>登记字段</h2>
+        <p class="hint">设置姓名、手机号、人脸图像是否启用及是否必填。</p>
+        <div id="fieldList"></div>
+      </section>
+
+      <section class="card">
+        <h2>来校目的选项</h2>
+        <p class="hint">为每个身份类型设置「来校目的」的可选项目。</p>
+        <div id="purposeList"></div>
+      </section>
+
+      <section class="card">
+        <h2>自定义附加字段</h2>
+        <p class="hint">在登记表单中额外增加输入项（如车牌号、随行人数等）。</p>
+        <div id="customList"></div>
+        <button class="btn-ghost" onclick="addCustomField()">+ 添加字段</button>
+      </section>
+
+      <section class="card">
+        <h2>账号管理</h2>
+        <div id="userList"></div>
+        <div class="add-user">
+          <input type="text" id="newUsername" placeholder="账号">
+          <input type="password" id="newPassword" placeholder="密码">
+          <select id="newRole">
+            <option value="teacher">老师</option>
+            <option value="parent">访客</option>
+            <option value="principal">校长</option>
+          </select>
+          <input type="text" id="newName" placeholder="姓名（可选）">
+          <button class="btn-primary" onclick="addUser()">添加账号</button>
+        </div>
+        <div class="add-user" style="margin-top:8px;">
+          <input type="text" id="pwdUser" placeholder="要改密码的账号">
+          <input type="password" id="pwdNew" placeholder="新密码">
+          <button class="btn-ghost" onclick="changePassword()">修改密码</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    var config = null;
+    var users = [];
+
+    function el(id) { return document.getElementById(id); }
+
+    async function doLogin() {
+      var u = el('loginUser').value.trim();
+      var p = el('loginPass').value;
+      if (!u || !p) { el('loginError').textContent = '请输入账号和密码'; return; }
+      try {
+        var res = await fetch('/api/auth/login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p })
+        });
+        var data = await res.json();
+        if (!res.ok) { el('loginError').textContent = data.error || '登录失败'; return; }
+        if (data.role !== 'principal') {
+          el('loginError').textContent = '只有校长账号可以进入配置';
+          await fetch('/api/auth/logout', { method: 'POST' });
+          return;
+        }
+        el('loginOverlay').style.display = 'none';
+        el('main').style.display = 'block';
+        await loadAdmin();
+      } catch (e) { el('loginError').textContent = '网络错误'; }
+    }
+
+    async function logout() {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      location.reload();
+    }
+
+    async function loadAdmin() {
+      var cr = await fetch('/api/config');
+      config = await cr.json();
+      normalizeConfig();
+      var ur = await fetch('/api/users');
+      users = await ur.json();
+      renderAll();
+    }
+
+    function normalizeConfig() {
+      if (!config.theme) config.theme = { primary: '#3b82f6', secondary: '#1d4ed8' };
+      if (!config.identityTypes) config.identityTypes = [];
+      if (!config.fields) config.fields = [];
+      if (!config.purposes) config.purposes = {};
+      if (!config.customFields) config.customFields = [];
+    }
+
+    function renderAll() {
+      el('schoolName').value = config.schoolName || '';
+      el('contactPhone').value = config.contactPhone || '';
+      el('welcomeText').value = config.welcomeText || '';
+      el('themePrimary').value = config.theme.primary || '#3b82f6';
+      el('themeSecondary').value = config.theme.secondary || '#1d4ed8';
+      renderLogo();
+      renderIdentities();
+      renderFields();
+      renderPurposes();
+      renderCustomFields();
+      renderUsers();
+      previewTheme();
+    }
+
+    function renderLogo() {
+      var img = el('logoPreview');
+      if (config.logoPath) { img.src = config.logoPath; img.style.display = 'block'; }
+      else { img.style.display = 'none'; }
+    }
+
+    function previewTheme() {
+      var s = document.documentElement.style;
+      s.setProperty('--primary', el('themePrimary').value);
+      s.setProperty('--secondary', el('themeSecondary').value);
+      var tp = el('themePreview');
+      tp.querySelector('.tp-header').style.background = 'linear-gradient(135deg,' + el('themePrimary').value + ' 0%,' + el('themeSecondary').value + ' 100%)';
+      tp.querySelector('.tp-btn').style.background = 'linear-gradient(135deg,' + el('themePrimary').value + ' 0%,' + el('themeSecondary').value + ' 100%)';
+    }
+
+    function renderIdentities() {
+      var box = el('identityList');
+      var h = '';
+      (config.identityTypes || []).forEach(function(t, i) {
+        h += '<div class="row-item">';
+        h += '<label class="switch"><input type="checkbox" data-idx="' + i + '" class="iden-enabled" ' + (t.enabled ? 'checked' : '') + '> 启用</label>';
+        h += '<input type="text" class="iden-label" data-idx="' + i + '" value="' + t.label + '">';
+        h += '<span class="muted">内部值：' + t.value + '</span>';
+        h += '<button class="btn-danger" onclick="removeIdentity(' + i + ')">删除</button>';
+        h += '</div>';
+      });
+      box.innerHTML = h;
+    }
+
+    function addIdentity() {
+      var name = el('newIdentityName').value.trim();
+      if (!name) { alert('请输入身份类型名称'); return; }
+      if (!config.identityTypes) config.identityTypes = [];
+      if (config.identityTypes.some(function(t) { return t.value === name; })) { alert('该身份类型已存在'); return; }
+      config.identityTypes.push({ value: name, label: name, enabled: true });
+      el('newIdentityName').value = '';
+      renderIdentities();
+      renderPurposes();
+    }
+
+    function removeIdentity(i) {
+      var t = config.identityTypes[i];
+      if (!confirm('确定删除身份类型「' + t.label + '」吗？')) return;
+      config.identityTypes.splice(i, 1);
+      renderIdentities();
+      renderPurposes();
+    }
+
+    function renderFields() {
+      var box = el('fieldList');
+      var h = '';
+      (config.fields || []).forEach(function(f, i) {
+        h += '<div class="row-item">';
+        h += '<label class="switch"><input type="checkbox" data-idx="' + i + '" class="field-enabled" ' + (f.enabled !== false ? 'checked' : '') + '> 启用</label>';
+        h += '<label class="switch"><input type="checkbox" data-idx="' + i + '" class="field-required" ' + (f.required !== false ? 'checked' : '') + '> 必填</label>';
+        h += '<input type="text" class="field-label" data-idx="' + i + '" value="' + f.label + '">';
+        h += '</div>';
+      });
+      box.innerHTML = h;
+    }
+
+    function renderPurposes() {
+      var box = el('purposeList');
+      var h = '';
+      (config.identityTypes || []).forEach(function(t) {
+        var list = (config.purposes && config.purposes[t.value]) || [];
+        h += '<div class="purpose-block"><div class="purpose-title">' + t.label + '</div><div class="chip-wrap" data-identity="' + t.value + '">';
+        list.forEach(function(p) {
+          h += '<span class="chip">' + p + '<button onclick="removePurpose(\'' + t.value + '\', this)">×</button></span>';
+        });
+        h += '</div><div class="add-purpose"><input type="text" placeholder="新增目的选项" data-identity="' + t.value + '"><button class="btn-ghost" onclick="addPurpose(\'' + t.value + '\', this)">添加</button></div></div>';
+      });
+      box.innerHTML = h;
+    }
+
+    function addPurpose(identity, btn) {
+      var input = btn.previousElementSibling;
+      var val = input.value.trim();
+      if (!val) return;
+      if (!config.purposes) config.purposes = {};
+      if (!config.purposes[identity]) config.purposes[identity] = [];
+      config.purposes[identity].push(val);
+      input.value = '';
+      renderPurposes();
+    }
+
+    function removePurpose(identity, btn) {
+      var chip = btn.parentElement;
+      var val = chip.textContent.replace('×', '').trim();
+      config.purposes[identity] = (config.purposes[identity] || []).filter(function(p) { return p !== val; });
+      renderPurposes();
+    }
+
+    function renderCustomFields() {
+      var box = el('customList');
+      var h = '';
+      (config.customFields || []).forEach(function(cf, i) {
+        h += '<div class="row-item">';
+        h += '<input type="text" class="cf-label" data-idx="' + i + '" value="' + cf.label + '" placeholder="字段名称">';
+        h += '<label class="switch"><input type="checkbox" data-idx="' + i + '" class="cf-required" ' + (cf.required ? 'checked' : '') + '> 必填</label>';
+        h += '<button class="btn-danger" onclick="removeCustomField(' + i + ')">删除</button>';
+        h += '</div>';
+      });
+      if (!(config.customFields || []).length) h = '<p class="muted">暂无自定义字段</p>';
+      box.innerHTML = h;
+    }
+
+    function addCustomField() {
+      if (!config.customFields) config.customFields = [];
+      config.customFields.push({ id: 'cf_' + Date.now(), label: '', required: false });
+      renderCustomFields();
+    }
+
+    function removeCustomField(i) {
+      config.customFields.splice(i, 1);
+      renderCustomFields();
+    }
+
+    function renderUsers() {
+      var box = el('userList');
+      var h = '<table class="user-table"><tr><th>账号</th><th>姓名</th><th>角色</th><th>操作</th></tr>';
+      users.forEach(function(u) {
+        h += '<tr><td>' + u.username + '</td><td>' + (u.name || '-') + '</td><td>' + (u.role === 'principal' ? '校长' : u.role === 'teacher' ? '老师' : '访客') + '</td>';
+        h += '<td>' + (u.username === 'admin' ? '<span class="muted">默认管理员</span>' : '<button class="btn-danger" onclick="removeUser(' + u.id + ')">删除</button>') + '</td></tr>';
+      });
+      h += '</table>';
+      box.innerHTML = h;
+    }
+
+    async function addUser() {
+      var username = el('newUsername').value.trim();
+      var password = el('newPassword').value;
+      var role = el('newRole').value;
+      var name = el('newName').value.trim();
+      if (!username || !password) { alert('请填写账号和密码'); return; }
+      var res = await fetch('/api/users', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, password: password, role: role, name: name })
+      });
+      var data = await res.json();
+      if (!res.ok) { alert(data.error || '添加失败'); return; }
+      el('newUsername').value = ''; el('newPassword').value = ''; el('newName').value = '';
+      loadAdmin();
+    }
+
+    async function removeUser(id) {
+      if (!confirm('确定删除该账号吗？')) return;
+      var res = await fetch('/api/users/' + id, { method: 'DELETE' });
+      var data = await res.json();
+      if (!res.ok) { alert(data.error || '删除失败'); return; }
+      loadAdmin();
+    }
+
+    async function changePassword() {
+      var username = el('pwdUser').value.trim();
+      var newPassword = el('pwdNew').value;
+      if (!username || !newPassword) { alert('请填写账号和新密码'); return; }
+      var res = await fetch('/api/users/password', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, newPassword: newPassword })
+      });
+      var data = await res.json();
+      if (!res.ok) { alert(data.error || '修改失败'); return; }
+      alert('密码已修改');
+      el('pwdUser').value = ''; el('pwdNew').value = '';
+    }
+
+    async function uploadLogo(input) {
+      var file = input.files[0];
+      if (!file) return;
+      var fd = new FormData();
+      fd.append('logo', file);
+      var res = await fetch('/api/config/logo', { method: 'POST', body: fd });
+      var data = await res.json();
+      if (!res.ok) { alert(data.error || '上传失败'); return; }
+      config.logoPath = data.logoPath;
+      renderLogo();
+    }
+
+    async function save() {
+      try {
+        config.schoolName = el('schoolName').value.trim();
+        config.contactPhone = el('contactPhone').value.trim();
+        config.welcomeText = el('welcomeText').value.trim();
+        config.theme = { primary: el('themePrimary').value, secondary: el('themeSecondary').value };
+
+        document.querySelectorAll('.iden-enabled').forEach(function(cb) {
+          config.identityTypes[cb.dataset.idx].enabled = cb.checked;
+        });
+        document.querySelectorAll('.iden-label').forEach(function(inp) {
+          config.identityTypes[inp.dataset.idx].label = inp.value.trim() || config.identityTypes[inp.dataset.idx].label;
+        });
+
+        document.querySelectorAll('.field-enabled').forEach(function(cb) {
+          config.fields[cb.dataset.idx].enabled = cb.checked;
+        });
+        document.querySelectorAll('.field-required').forEach(function(cb) {
+          config.fields[cb.dataset.idx].required = cb.checked;
+        });
+        document.querySelectorAll('input.field-label').forEach(function(inp) {
+          config.fields[inp.dataset.idx].label = inp.value.trim() || config.fields[inp.dataset.idx].label;
+        });
+
+        document.querySelectorAll('.cf-label').forEach(function(inp) {
+          config.customFields[inp.dataset.idx].label = inp.value.trim();
+        });
+        document.querySelectorAll('.cf-required').forEach(function(cb) {
+          config.customFields[cb.dataset.idx].required = cb.checked;
+        });
+        config.customFields = (config.customFields || []).filter(function(cf) { return cf.label; });
+
+        var res = await fetch('/api/config', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config)
+        });
+        var data = await res.json();
+        if (!res.ok) {
+          if (res.status === 401) { alert('登录已失效，请刷新页面重新登录'); return; }
+          if (res.status === 403) { alert('只有校长账号可以保存配置'); return; }
+          alert(data.error || '保存失败');
+          return;
+        }
+        config = data.config;
+        alert('配置已保存，登记页已自动更新');
+      } catch (e) {
+        alert('保存出错：' + (e && e.message ? e.message : e));
+      }
+    }
+
+    (async function init() {
+      try {
+        var res = await fetch('/api/auth/me');
+        if (res.ok) {
+          var me = await res.json();
+          if (me.role === 'principal') {
+            el('loginOverlay').style.display = 'none';
+            el('main').style.display = 'block';
+            await loadAdmin();
+          }
+        }
+      } catch (e) {}
+    })();
+  </script>
+</body>
+</html>

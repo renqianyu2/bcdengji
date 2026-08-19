@@ -3,7 +3,7 @@
 cd "$(dirname "$0")"
 
 echo "========================================"
-echo "       访客登记系统"
+echo "           访客登记系统"
 echo "========================================"
 echo ""
 echo "  [1] 启动服务"
@@ -20,12 +20,12 @@ read -p "请输入选项: " num
 
 case $num in
   1)
-    if lsof -i :2312 >/dev/null 2>&1; then
+    if lsof -i :12319 >/dev/null 2>&1; then
       echo "服务已在运行中"
     else
       node server.js &
       sleep 1
-      echo "服务已启动 http://localhost:2312"
+      echo "服务已启动 http://localhost:12319"
     fi
     ;;
   2)
@@ -40,18 +40,18 @@ case $num in
     echo "服务已重启"
     ;;
   4)
-    open http://localhost:2312/
+    open http://localhost:12319/
     ;;
   5)
-    open http://localhost:2312/records.html
+    open http://localhost:12319/records.html
     ;;
   6)
-    open http://localhost:2312/face-scan
+    open http://localhost:12319/face-scan
     ;;
   7)
-    open http://localhost:2312/
-    open http://localhost:2312/records.html
-    open http://localhost:2312/face-scan
+    open http://localhost:12319/
+    open http://localhost:12319/records.html
+    open http://localhost:12319/face-scan
     ;;
   0)
     exit 0

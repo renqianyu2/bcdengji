@@ -3,14 +3,22 @@ const Database = require('better-sqlite3');
 const multer = require('multer');
 const path = require('path');
 const xlsx = require('xlsx');
+const fs = require('fs');
+const crypto = require('crypto');
 
 const app = express();
-const PORT = 9090;
+const PORT = 12319;
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
+app.use('/api', (req, res, next) => {
+  res.header('Cache-Control', 'no-store');
   next();
 });
 
@@ -29,13 +37,21 @@ app.get('/print', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'print.html'));
 });
 
+app.get('/config', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'config.html'));
+});
+
 // 人脸库API
 app.get('/api/faces', (req, res) => {
   const visitors = db.prepare('SELECT id, name, phone, photo_path FROM visitors WHERE photo_path IS NOT NULL ORDER BY id DESC').all();
   res.json(visitors);
 });
 
-const db = new Database('database/visitors.db');
+const dbDir = path.join(__dirname, 'database');
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+const db = new Database(path.join(dbDir, 'visitors.db'));
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS visitors (
@@ -101,8 +117,147 @@ newColumns.forEach(col => {
   }
 });
 
+// 自定义字段存储
+try {
+  if (!columns.includes('custom_fields')) {
+    db.exec("ALTER TABLE visitors ADD COLUMN custom_fields TEXT");
+  }
+} catch(e) {}
+
+// ========== 系统配置 / 账号 ==========
+db.exec(`
+  CREATE TABLE IF NOT EXISTS settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    data TEXT NOT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'parent',
+    name TEXT,
+    phone TEXT,
+    photo_path TEXT,
+    grade TEXT,
+    class_name TEXT
+  )
+`);
+
+// 用户表字段迁移（兼容旧库）
+try {
+  const uCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+  const uNew = [
+    { name: 'phone', sql: "ALTER TABLE users ADD COLUMN phone TEXT" },
+    { name: 'photo_path', sql: "ALTER TABLE users ADD COLUMN photo_path TEXT" },
+    { name: 'grade', sql: "ALTER TABLE users ADD COLUMN grade TEXT" },
+    { name: 'class_name', sql: "ALTER TABLE users ADD COLUMN class_name TEXT" }
+  ];
+  uNew.forEach(c => { if (!uCols.includes(c.name)) { try { db.exec(c.sql); } catch(e) {} } });
+} catch(e) {}
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    expires_at DATETIME
+  )
+`);
+
+const DEFAULT_CONFIG = {
+  schoolName: '北辰幼儿园',
+  welcomeText: '访客登记',
+  contactPhone: '',
+  logoPath: '',
+  theme: { primary: '#3b82f6', secondary: '#1d4ed8' },
+  identityTypes: [
+    { value: '家长', label: '学生家长', enabled: true },
+    { value: '维修工', label: '维修工人', enabled: true },
+    { value: '外来老师', label: '外来老师', enabled: true }
+  ],
+  fields: [
+    { key: 'name', label: '姓名', type: 'text', enabled: true, required: true },
+    { key: 'phone', label: '手机号', type: 'tel', enabled: true, required: true },
+    { key: 'photo', label: '人脸图像', type: 'photo', enabled: true, required: true }
+  ],
+  purposes: {
+    '家长': ['家长会', '探访', '送东西', '其他'],
+    '维修工': [],
+    '外来老师': ['参加活动', '采访', '其他']
+  },
+  customFields: []
+};
+
+if (!db.prepare('SELECT id FROM settings WHERE id = 1').get()) {
+  db.prepare('INSERT INTO settings (id, data) VALUES (1, ?)').run(JSON.stringify(DEFAULT_CONFIG));
+}
+
+function hashPassword(pw) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(pw, salt, 64).toString('hex');
+  return salt + ':' + hash;
+}
+function verifyPassword(pw, stored) {
+  try {
+    const parts = stored.split(':');
+    if (parts.length !== 2) return false;
+    const hash = crypto.scryptSync(pw, parts[0], 64).toString('hex');
+    return crypto.timingSafeEqual(Buffer.from(parts[1], 'hex'), Buffer.from(hash, 'hex'));
+  } catch(e) { return false; }
+}
+
+if (!db.prepare('SELECT id FROM users WHERE username = ?').get('admin')) {
+  db.prepare('INSERT INTO users (username, password, role, name) VALUES (?, ?, ?, ?)')
+    .run('admin', hashPassword('1234'), 'principal', '校长');
+}
+
+function parseCookies(req) {
+  const header = req.headers.cookie;
+  const out = {};
+  if (!header) return out;
+  header.split(';').forEach(p => {
+    const i = p.indexOf('=');
+    if (i > -1) out[p.slice(0, i).trim()] = decodeURIComponent(p.slice(i + 1).trim());
+  });
+  return out;
+}
+
+function getSession(req) {
+  const token = parseCookies(req).sid;
+  if (!token) return null;
+  const s = db.prepare('SELECT * FROM sessions WHERE token = ?').get(token);
+  if (!s) return null;
+  if (s.expires_at && new Date(s.expires_at) < new Date()) {
+    db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+    return null;
+  }
+  return db.prepare('SELECT id, username, role, name, phone, photo_path, grade, class_name FROM users WHERE id = ?').get(s.user_id);
+}
+
+function requireAuth(role) {
+  return (req, res, next) => {
+    const user = getSession(req);
+    if (!user) return res.status(401).json({ error: '请先登录' });
+    if (role && user.role !== role) return res.status(403).json({ error: '没有权限' });
+    req.user = user;
+    next();
+  };
+}
+
+function getConfig() {
+  const row = db.prepare('SELECT data FROM settings WHERE id = 1').get();
+  if (!row) return DEFAULT_CONFIG;
+  try { return JSON.parse(row.data); } catch(e) { return DEFAULT_CONFIG; }
+}
+
+const uploadDir = path.join(__dirname, 'public', 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
-  destination: 'public/uploads/',
+  destination: uploadDir,
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, uniqueSuffix + path.extname(file.originalname));
@@ -120,6 +275,136 @@ app.post('/upload', upload.single('photo'), (req, res) => {
 app.get('/api/interview-stats', (req, res) => {
   const stats = db.prepare('SELECT person_name, count FROM interview_stats ORDER BY count DESC').all();
   res.json(stats);
+});
+
+// ========== 认证 ==========
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) return res.status(400).json({ error: '请输入账号和密码' });
+  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+  if (!user || !verifyPassword(password, user.password)) {
+    return res.status(401).json({ error: '账号或密码错误' });
+  }
+  const token = crypto.randomBytes(32).toString('hex');
+  const expires = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+  db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)').run(token, user.id, expires);
+  res.setHeader('Set-Cookie', 'sid=' + token + '; HttpOnly; Path=/; Max-Age=604800; SameSite=Lax');
+  res.json({ id: user.id, username: user.username, role: user.role, name: user.name, phone: user.phone, photo_path: user.photo_path, grade: user.grade, class_name: user.class_name });
+});
+
+// 注册（访客 / 老师 / 校长）
+app.post('/api/auth/register', (req, res) => {
+  const { username, password, role, name, phone, photoPath, grade, class_name } = req.body || {};
+  if (!username || !password) return res.status(400).json({ error: '请填写账号和密码' });
+  if (!['parent', 'teacher', 'principal'].includes(role)) return res.status(400).json({ error: '角色无效' });
+  if (db.prepare('SELECT id FROM users WHERE username = ?').get(username)) {
+    return res.status(400).json({ error: '账号已存在' });
+  }
+  if (role === 'parent' && (!name || !phone)) {
+    return res.status(400).json({ error: '访客需填写姓名和手机号' });
+  }
+  if (role === 'teacher' && !name) {
+    return res.status(400).json({ error: '老师需填写姓名' });
+  }
+  const result = db.prepare('INSERT INTO users (username, password, role, name, phone, photo_path, grade, class_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(username, hashPassword(password), role, name || null, phone || null, photoPath || null, grade || null, class_name || null);
+  const user = db.prepare('SELECT id, username, role, name, phone, photo_path, grade, class_name FROM users WHERE id = ?').get(result.lastInsertRowid);
+  const token = crypto.randomBytes(32).toString('hex');
+  const expires = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+  db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)').run(token, user.id, expires);
+  res.setHeader('Set-Cookie', 'sid=' + token + '; HttpOnly; Path=/; Max-Age=604800; SameSite=Lax');
+  res.json(user);
+});
+
+// 教师列表（被访人）
+app.get('/api/teachers', (req, res) => {
+  const teachers = db.prepare("SELECT id, name, grade, class_name FROM users WHERE role = 'teacher' ORDER BY id").all();
+  res.json(teachers);
+});
+
+// 更新个人资料
+app.put('/api/auth/profile', requireAuth(), (req, res) => {
+  const { name, phone, photoPath, grade, class_name } = req.body || {};
+  db.prepare('UPDATE users SET name = ?, phone = ?, photo_path = ?, grade = ?, class_name = ? WHERE id = ?')
+    .run(
+      name !== undefined ? name : req.user.name,
+      phone !== undefined ? phone : req.user.phone,
+      photoPath !== undefined ? photoPath : req.user.photo_path,
+      grade !== undefined ? grade : req.user.grade,
+      class_name !== undefined ? class_name : req.user.class_name,
+      req.user.id
+    );
+  const user = db.prepare('SELECT id, username, role, name, phone, photo_path, grade, class_name FROM users WHERE id = ?').get(req.user.id);
+  res.json(user);
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  const token = parseCookies(req).sid;
+  if (token) db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+  res.setHeader('Set-Cookie', 'sid=; HttpOnly; Path=/; Max-Age=0');
+  res.json({ message: '已退出' });
+});
+
+app.get('/api/auth/me', (req, res) => {
+  const user = getSession(req);
+  if (!user) return res.status(401).json({ error: '未登录' });
+  res.json(user);
+});
+
+// ========== 配置 ==========
+app.get('/api/config', (req, res) => {
+  res.json(getConfig());
+});
+
+app.put('/api/config', requireAuth('principal'), (req, res) => {
+  const data = req.body;
+  if (!data || typeof data !== 'object') return res.status(400).json({ error: '配置无效' });
+  db.prepare('UPDATE settings SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1')
+    .run(JSON.stringify(data));
+  res.json({ message: '配置已保存', config: getConfig() });
+});
+
+app.post('/api/config/logo', requireAuth('principal'), upload.single('logo'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: '请选择图片文件' });
+  res.json({ logoPath: '/uploads/' + req.file.filename });
+});
+
+// ========== 账号管理（仅校长） ==========
+app.get('/api/users', requireAuth('principal'), (req, res) => {
+  const users = db.prepare('SELECT id, username, role, name FROM users ORDER BY id').all();
+  res.json(users);
+});
+
+app.post('/api/users', requireAuth('principal'), (req, res) => {
+  const { username, password, role, name } = req.body || {};
+  if (!username || !password) return res.status(400).json({ error: '请填写账号和密码' });
+  if (db.prepare('SELECT id FROM users WHERE username = ?').get(username)) {
+    return res.status(400).json({ error: '账号已存在' });
+  }
+  const r = ['parent', 'teacher', 'principal'].includes(role) ? role : 'parent';
+  const result = db.prepare('INSERT INTO users (username, password, role, name) VALUES (?, ?, ?, ?)')
+    .run(username, hashPassword(password), r, name || null);
+  res.json({ id: result.lastInsertRowid });
+});
+
+app.delete('/api/users/:id', requireAuth('principal'), (req, res) => {
+  const id = parseInt(req.params.id);
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+  if (!user) return res.status(400).json({ error: '账号不存在' });
+  if (user.username === 'admin') return res.status(400).json({ error: '不能删除默认管理员账号' });
+  if (req.user.id === id) return res.status(400).json({ error: '不能删除当前登录的账号' });
+  db.prepare('DELETE FROM users WHERE id = ?').run(id);
+  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(id);
+  res.json({ message: '已删除' });
+});
+
+app.put('/api/users/password', requireAuth('principal'), (req, res) => {
+  const { username, newPassword } = req.body || {};
+  if (!username || !newPassword) return res.status(400).json({ error: '请填写账号和新密码' });
+  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+  if (!user) return res.status(400).json({ error: '账号不存在' });
+  db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashPassword(newPassword), user.id);
+  res.json({ message: '密码已修改' });
 });
 
 app.get('/api/visitors', (req, res) => {
@@ -178,7 +463,7 @@ function generateCode() {
 }
 
 app.post('/api/visitors', (req, res) => {
-  const { name, phone, identity, photoPath, purpose, purposeDetail, classInfo, studentInfo, itemPhotoPath, itemDescription, company, fromSchool, host, reason, carInfo } = req.body;
+  const { name, phone, identity, photoPath, purpose, purposeDetail, classInfo, studentInfo, itemPhotoPath, itemDescription, company, fromSchool, host, reason, carInfo, customFields } = req.body;
   
   if (!name || !phone || !identity) {
     return res.status(400).json({ error: '请填写所有必填字段' });
@@ -192,11 +477,11 @@ app.post('/api/visitors', (req, res) => {
   const code = generateCode();
   
   const stmt = db.prepare(`
-    INSERT INTO visitors (code, name, phone, identity, photo_path, purpose, purpose_detail, class_info, student_info, item_photo_path, item_description, company, from_school, host, reason, car_info)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO visitors (code, name, phone, identity, photo_path, purpose, purpose_detail, class_info, student_info, item_photo_path, item_description, company, from_school, host, reason, car_info, custom_fields)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   
-  const result = stmt.run(code, name, phone, identity, photoPath || null, purpose || null, purposeDetail || null, classInfo || null, studentInfo || null, itemPhotoPath || null, itemDescription || null, company || null, fromSchool || null, host || null, reason || null, carInfo || null);
+  const result = stmt.run(code, name, phone, identity, photoPath || null, purpose || null, purposeDetail || null, classInfo || null, studentInfo || null, itemPhotoPath || null, itemDescription || null, company || null, fromSchool || null, host || null, reason || null, carInfo || null, customFields ? JSON.stringify(customFields) : null);
   
   if (purpose === '采访' && purposeDetail) {
     const existing = db.prepare('SELECT * FROM interview_stats WHERE person_name = ?').get(purposeDetail);
