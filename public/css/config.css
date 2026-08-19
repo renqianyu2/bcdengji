@@ -64,11 +64,13 @@ body {
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field > span, .field-label { font-size: 13px; color: #6b7280; font-weight: 500; }
-.field input[type="text"], .field input[type="color"] {
+.field input[type="text"], .field input[type="color"], .field input[type="number"], .field select {
   padding: 11px 14px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 15px; outline: none;
+  font-family: inherit;
 }
 .field input[type="color"] { height: 44px; padding: 4px; cursor: pointer; }
-.field input:focus { border-color: var(--primary); }
+.field select { background: white; }
+.field input:focus, .field select:focus { border-color: var(--primary); }
 
 .logo-row { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
 .logo-preview { width: 64px; height: 64px; object-fit: contain; border-radius: 12px; background: #f3f4f6; border: 1px solid #e5e7eb; }

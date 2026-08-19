@@ -186,6 +186,11 @@ const DEFAULT_CONFIG = {
     '维修工': [],
     '外来老师': ['参加活动', '采访', '其他']
   },
+  school: {
+    type: '小学',
+    classesPerGrade: 4,
+    extraClasses: []
+  },
   customFields: []
 };
 
@@ -320,6 +325,23 @@ app.post('/api/auth/register', (req, res) => {
 app.get('/api/teachers', (req, res) => {
   const teachers = db.prepare("SELECT id, name, grade, class_name FROM users WHERE role = 'teacher' ORDER BY id").all();
   res.json(teachers);
+});
+
+// 班级结构（根据学校类型动态生成年级）
+const GRADE_CN = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九' };
+app.get('/api/school-classes', (req, res) => {
+  const cfg = getConfig();
+  const school = cfg.school || { type: '小学', classesPerGrade: 4, extraClasses: [] };
+  let grades = [];
+  if (school.type === '幼儿园') {
+    grades = ['小班', '中班', '大班'].concat(school.extraClasses || []);
+  } else {
+    let start = 1, end = 6;
+    if (school.type === '初中+小学') end = 9;
+    else if (school.type === '初中') { start = 7; end = 9; }
+    for (let g = start; g <= end; g++) grades.push(GRADE_CN[g] + '年级');
+  }
+  res.json({ type: school.type, classesPerGrade: school.classesPerGrade || 4, grades });
 });
 
 // 更新个人资料

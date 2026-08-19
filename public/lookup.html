@@ -103,7 +103,7 @@
           
           var hostInfo = '';
           if (v.identity === '家长') {
-            hostInfo = v.host || '-';
+            hostInfo = v.host || v.class_info || '-';
           } else if (v.identity === '维修工') {
             hostInfo = v.company || '-';
           } else if (v.identity === '外来老师') {

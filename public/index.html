@@ -63,12 +63,6 @@
           <div id="regTeacherFields" style="display:none;">
             <select id="regGrade" onchange="fillRegClass()">
               <option value="">选择年级</option>
-              <option value="一年级">一年级</option>
-              <option value="二年级">二年级</option>
-              <option value="三年级">三年级</option>
-              <option value="四年级">四年级</option>
-              <option value="五年级">五年级</option>
-              <option value="六年级">六年级</option>
             </select>
             <select id="regClass"><option value="">选择班级</option></select>
           </div>
@@ -98,12 +92,6 @@
         <div id="profileTeacherFields" style="display:none;">
           <select id="profileGrade" onchange="fillProfileClass()">
             <option value="">选择年级</option>
-            <option value="一年级">一年级</option>
-            <option value="二年级">二年级</option>
-            <option value="三年级">三年级</option>
-            <option value="四年级">四年级</option>
-            <option value="五年级">五年级</option>
-            <option value="六年级">六年级</option>
           </select>
           <select id="profileClass"><option value="">选择班级</option></select>
         </div>
@@ -118,6 +106,7 @@
     var teachers = [];
     var currentIdentity = '';
     var photoPath = null;
+    var schoolClasses = { grades: [], classesPerGrade: 4 };
 
     function el(id) { return document.getElementById(id); }
 
@@ -134,6 +123,10 @@
         currentUser = r.ok ? await r.json() : null;
       } catch(e) { currentUser = null; }
       teachers = await (await fetch('/api/teachers')).json();
+      try {
+        schoolClasses = await (await fetch('/api/school-classes')).json();
+      } catch(e) { schoolClasses = { grades: [], classesPerGrade: 4 }; }
+      fillGradeSelects();
       applyTheme();
       applyHeader();
       applyAuthBar();
@@ -141,6 +134,15 @@
       if (ids.length === 0) ids = config.identityTypes || [];
       currentIdentity = ids.length ? ids[0].value : '';
       renderForm();
+    }
+
+    function fillGradeSelects() {
+      var opts = '<option value="">选择年级</option>';
+      (schoolClasses.grades || []).forEach(function(g) {
+        opts += '<option value="' + g + '">' + g + '</option>';
+      });
+      el('regGrade').innerHTML = opts;
+      el('profileGrade').innerHTML = opts;
     }
 
     function applyTheme() {
@@ -271,11 +273,34 @@
       return h;
     }
 
+    function gradeOptions() {
+      var h = '';
+      (schoolClasses.grades || []).forEach(function(g) {
+        h += '<option value="' + g + '">' + g + '</option>';
+      });
+      return h;
+    }
+
+    function fillParentClass() {
+      var g = el('parentGrade').value;
+      var sel = el('parentClass');
+      sel.innerHTML = '<option value="">选择班级</option>';
+      if (!g) return;
+      var n = schoolClasses.classesPerGrade || 4;
+      for (var i = 1; i <= n; i++) sel.innerHTML += '<option value="' + g + '（' + i + '）班">' + g + '（' + i + '）班</option>';
+    }
+
     function buildParentSection() {
       var purposes = (config.purposes && config.purposes['家长']) || [];
       var h = '<div class="section-title">来访信息</div>';
-      h += '<div class="form-group"><label>被访人（老师）<span class="required">*</span></label><select name="host">' + teacherOptions() + '</select></div>';
       if (purposes.length) h += buildPurposeRadios(purposes);
+      h += '<div id="classFields" class="form-group" style="display:none;">';
+      h += '<label>选择班级 <span class="required">*</span></label>';
+      h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
+      h += '<select name="grade" id="parentGrade" onchange="fillParentClass()"><option value="">选择年级</option>' + gradeOptions() + '</select>';
+      h += '<select name="classInfo" id="parentClass"><option value="">先选年级</option></select>';
+      h += '</div></div>';
+      h += '<div id="teacherFields" class="form-group" style="display:none;"><label>被访人（老师）<span class="required">*</span></label><select name="host">' + teacherOptions() + '</select></div>';
       h += '<div id="purposeDetailParent" class="form-group" style="display:none;"><label>具体事项 <span class="required">*</span></label><input type="text" name="purposeDetail" placeholder="请填写具体事项"></div>';
       return h;
     }
@@ -315,9 +340,12 @@
     function onPurposeChange() {
       var checked = document.querySelector('input[name="purpose"]:checked');
       var purpose = checked ? checked.value : '';
-      var d = el('purposeDetailParent');
-      if (d) d.style.display = purpose === '其他' ? 'block' : 'none';
-      if (currentIdentity === '外来老师') {
+      if (currentIdentity === '家长') {
+        var cf = el('classFields'), tf = el('teacherFields'), pd = el('purposeDetailParent');
+        if (cf) cf.style.display = (purpose === '家长会' || purpose === '送东西') ? 'block' : 'none';
+        if (tf) tf.style.display = purpose === '探访' ? 'block' : 'none';
+        if (pd) pd.style.display = purpose === '其他' ? 'block' : 'none';
+      } else if (currentIdentity === '外来老师') {
         var labels = { '参加活动': '参加什么活动', '采访': '采访谁', '其他': '具体事项' };
         var l = el('teacherDetailLabel');
         if (l) l.innerHTML = (labels[purpose] || '具体事项') + ' <span class="required">*</span>';
@@ -376,7 +404,8 @@
       var sel = el('regClass');
       sel.innerHTML = '<option value="">选择班级</option>';
       if (!g) return;
-      for (var i = 1; i <= 10; i++) sel.innerHTML += '<option value="' + g + '（' + i + '）班">' + g + '（' + i + '）班</option>';
+      var n = schoolClasses.classesPerGrade || 4;
+      for (var i = 1; i <= n; i++) sel.innerHTML += '<option value="' + g + '（' + i + '）班">' + g + '（' + i + '）班</option>';
     }
 
     async function doLogin() {
@@ -443,7 +472,8 @@
         var sel = el('profileClass');
         sel.innerHTML = '';
         if (currentUser.grade) {
-          for (var i = 1; i <= 10; i++) {
+          var n = schoolClasses.classesPerGrade || 4;
+          for (var i = 1; i <= n; i++) {
             var v = currentUser.grade + '（' + i + '）班';
             sel.innerHTML += '<option value="' + v + '"' + (v === currentUser.class_name ? ' selected' : '') + '>' + v + '</option>';
           }
@@ -457,7 +487,8 @@
       var sel = el('profileClass');
       sel.innerHTML = '<option value="">选择班级</option>';
       if (!g) return;
-      for (var i = 1; i <= 10; i++) sel.innerHTML += '<option value="' + g + '（' + i + '）班">' + g + '（' + i + '）班</option>';
+      var n = schoolClasses.classesPerGrade || 4;
+      for (var i = 1; i <= n; i++) sel.innerHTML += '<option value="' + g + '（' + i + '）班">' + g + '（' + i + '）班</option>';
     }
 
     async function uploadProfilePhoto(input) {
@@ -513,6 +544,7 @@
         photoPathFinal = photoPath;
       }
       var host = formData.get('host') || '';
+      var classInfo = formData.get('classInfo') || '';
       var purposeChecked = form.querySelector('input[name="purpose"]:checked');
       var purposeValue = purposeChecked ? purposeChecked.value : '';
       var purposeDetail = formData.get('purposeDetail');
@@ -530,8 +562,13 @@
       }
 
       if (identity === '家长') {
-        if (!host) { showMessage('请选择被访老师', 'error'); return; }
-        if (purposeValue === '其他' && !purposeDetail) { showMessage('请填写具体事项', 'error'); return; }
+        if (purposeValue === '家长会' || purposeValue === '送东西') {
+          if (!classInfo) { showMessage('请选择班级', 'error'); return; }
+        } else if (purposeValue === '探访') {
+          if (!host) { showMessage('请选择被访老师', 'error'); return; }
+        } else if (purposeValue === '其他') {
+          if (!purposeDetail) { showMessage('请填写具体事项', 'error'); return; }
+        }
       } else if (identity === '维修工') {
         if (!company || !reason) { showMessage('请填写公司名称和维修内容', 'error'); return; }
       } else if (identity === '外来老师') {
@@ -567,7 +604,7 @@
           body: JSON.stringify({
             name: name, phone: phone, identity: identity, photoPath: photoPathFinal,
             purpose: purposeValue, purposeDetail: purposeDetail,
-            host: host, company: company, fromSchool: fromSchool, reason: reason,
+            host: host, classInfo: classInfo, company: company, fromSchool: fromSchool, reason: reason,
             customFields: customFields
           })
         });

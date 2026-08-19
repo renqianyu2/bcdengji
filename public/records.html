@@ -205,7 +205,7 @@
         var statusTag = v.checkout_at ? '<span class="tag green">已签离</span>' : '<span class="tag">在访中</span>';
         
         var info = '';
-        if (v.identity === '家长') info = (v.host ? '访' + v.host : '') + (v.purpose ? (v.host ? ' · ' : '') + v.purpose : '');
+        if (v.identity === '家长') info = (v.host ? '访' + v.host : (v.class_info ? '班级' + v.class_info : '')) + (v.purpose ? ((v.host || v.class_info) ? ' · ' : '') + v.purpose : '');
         else if (v.identity === '维修工' && v.reason) info = v.reason;
         else if (v.identity === '外来老师' && v.purpose) info = v.purpose;
         
@@ -282,6 +282,7 @@
       
       if (v.identity === '家长') {
         html += '<div class="detail-row"><div class="detail-label">事由</div><div class="detail-value">' + (v.purpose || '-') + '</div></div>';
+        if (v.class_info) html += '<div class="detail-row"><div class="detail-label">班级</div><div class="detail-value">' + v.class_info + '</div></div>';
         if (v.purpose_detail) html += '<div class="detail-row"><div class="detail-label">具体事项</div><div class="detail-value">' + v.purpose_detail + '</div></div>';
       } else if (v.identity === '维修工') {
         html += '<div class="detail-row"><div class="detail-label">公司</div><div class="detail-value">' + (v.company || '-') + '</div></div>';

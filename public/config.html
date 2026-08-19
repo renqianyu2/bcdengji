@@ -97,6 +97,34 @@
       </section>
 
       <section class="card">
+        <h2>班级管理</h2>
+        <p class="hint">设置学校类型、每个年级的班级数量，以及幼儿园的额外班级（如托班）。</p>
+        <div class="grid2">
+          <label class="field">
+            <span>学校类型</span>
+            <select id="schoolType" onchange="onSchoolTypeChange()">
+              <option value="小学">小学</option>
+              <option value="初中+小学">初中+小学</option>
+              <option value="初中">初中</option>
+              <option value="幼儿园">幼儿园</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>每个年级班级数量</span>
+            <input type="number" id="classesPerGrade" min="1" max="20">
+          </label>
+        </div>
+        <div id="extraClassesWrap" style="display:none;">
+          <p class="hint" style="margin-bottom:8px;">幼儿园其他班级（如托班）：</p>
+          <div id="extraClassesList"></div>
+          <div class="add-purpose">
+            <input type="text" id="newExtraClass" placeholder="新增班级名称（如：托班）">
+            <button class="btn-ghost" onclick="addExtraClass()">添加</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
         <h2>自定义附加字段</h2>
         <p class="hint">在登记表单中额外增加输入项（如车牌号、随行人数等）。</p>
         <div id="customList"></div>
@@ -174,6 +202,7 @@
       if (!config.fields) config.fields = [];
       if (!config.purposes) config.purposes = {};
       if (!config.customFields) config.customFields = [];
+      if (!config.school) config.school = { type: '小学', classesPerGrade: 4, extraClasses: [] };
     }
 
     function renderAll() {
@@ -182,6 +211,9 @@
       el('welcomeText').value = config.welcomeText || '';
       el('themePrimary').value = config.theme.primary || '#3b82f6';
       el('themeSecondary').value = config.theme.secondary || '#1d4ed8';
+      el('schoolType').value = (config.school && config.school.type) || '小学';
+      el('classesPerGrade').value = (config.school && config.school.classesPerGrade) || 4;
+      renderExtraClasses();
       renderLogo();
       renderIdentities();
       renderFields();
@@ -195,6 +227,39 @@
       var img = el('logoPreview');
       if (config.logoPath) { img.src = config.logoPath; img.style.display = 'block'; }
       else { img.style.display = 'none'; }
+    }
+
+    function onSchoolTypeChange() {
+      el('extraClassesWrap').style.display = el('schoolType').value === '幼儿园' ? 'block' : 'none';
+    }
+
+    function renderExtraClasses() {
+      var isK = (config.school && config.school.type) === '幼儿园';
+      el('extraClassesWrap').style.display = isK ? 'block' : 'none';
+      var list = (config.school && config.school.extraClasses) || [];
+      var box = el('extraClassesList');
+      var h = '';
+      list.forEach(function(name, i) {
+        h += '<span class="chip">' + name + '<button onclick="removeExtraClass(' + i + ')">×</button></span>';
+      });
+      if (!list.length) h = '<p class="muted">暂无其他班级</p>';
+      box.innerHTML = h;
+    }
+
+    function addExtraClass() {
+      var name = el('newExtraClass').value.trim();
+      if (!name) { alert('请输入班级名称'); return; }
+      if (!config.school) config.school = { type: '幼儿园', classesPerGrade: 4, extraClasses: [] };
+      if (!config.school.extraClasses) config.school.extraClasses = [];
+      if (config.school.extraClasses.indexOf(name) > -1) { alert('该班级已存在'); return; }
+      config.school.extraClasses.push(name);
+      el('newExtraClass').value = '';
+      renderExtraClasses();
+    }
+
+    function removeExtraClass(i) {
+      config.school.extraClasses.splice(i, 1);
+      renderExtraClasses();
     }
 
     function previewTheme() {
@@ -376,6 +441,11 @@
         config.contactPhone = el('contactPhone').value.trim();
         config.welcomeText = el('welcomeText').value.trim();
         config.theme = { primary: el('themePrimary').value, secondary: el('themeSecondary').value };
+        config.school = {
+          type: el('schoolType').value,
+          classesPerGrade: parseInt(el('classesPerGrade').value) || 4,
+          extraClasses: (config.school && config.school.extraClasses) || []
+        };
 
         document.querySelectorAll('.iden-enabled').forEach(function(cb) {
           config.identityTypes[cb.dataset.idx].enabled = cb.checked;
