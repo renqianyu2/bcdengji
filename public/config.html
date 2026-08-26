@@ -15,7 +15,7 @@
       <input type="password" id="loginPass" placeholder="密码">
       <button class="btn-primary" onclick="doLogin()">登录</button>
       <p class="login-error" id="loginError"></p>
-      <a href="/index.html" style="display:block;margin-top:14px;color:#3b82f6;font-size:13px;text-decoration:none;">← 返回登记页</a>
+      <a href="/index.html" style="display:block;margin-top:14px;color:var(--primary);font-size:13px;text-decoration:none;">← 返回登记页</a>
     </div>
   </div>
 
@@ -198,7 +198,12 @@
 
     function normalizeConfig() {
       if (!config.theme) config.theme = { primary: '#3b82f6', secondary: '#1d4ed8' };
-      if (!config.identityTypes) config.identityTypes = [];
+      if (!config.identityTypes) config.identityTypes = [
+        { value: '家长', label: '学生家长', enabled: true },
+        { value: '维修工', label: '维修工人', enabled: true },
+        { value: '外来老师', label: '来访人', enabled: true },
+        { value: '其他', label: '其他人员', enabled: true }
+      ];
       if (!config.fields) config.fields = [];
       if (!config.purposes) config.purposes = {};
       if (!config.customFields) config.customFields = [];
@@ -262,10 +267,21 @@
       renderExtraClasses();
     }
 
+    function textColorFor(hex) {
+      var h = (hex || '').replace('#', '');
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      if (h.length !== 6) return '#ffffff';
+      var r = parseInt(h.substr(0, 2), 16);
+      var g = parseInt(h.substr(2, 2), 16);
+      var b = parseInt(h.substr(4, 2), 16);
+      return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? '#111827' : '#ffffff';
+    }
+
     function previewTheme() {
       var s = document.documentElement.style;
       s.setProperty('--primary', el('themePrimary').value);
       s.setProperty('--secondary', el('themeSecondary').value);
+      s.setProperty('--on-primary', textColorFor(el('themePrimary').value));
       var tp = el('themePreview');
       tp.querySelector('.tp-header').style.background = 'linear-gradient(135deg,' + el('themePrimary').value + ' 0%,' + el('themeSecondary').value + ' 100%)';
       tp.querySelector('.tp-btn').style.background = 'linear-gradient(135deg,' + el('themePrimary').value + ' 0%,' + el('themeSecondary').value + ' 100%)';

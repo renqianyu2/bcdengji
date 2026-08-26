@@ -3,6 +3,8 @@
     :root {
       --primary: #3b82f6;
       --secondary: #1d4ed8;
+      --on-primary: #ffffff;
+      --primary-deep: color-mix(in srgb, var(--primary) 70%, #111827);
       --success: #22c55e;
       --warning: #f59e0b;
       --danger: #ef4444;
@@ -17,207 +19,284 @@
       --gray-800: #1f2937;
       --gray-900: #111827;
     }
-    body { 
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #f1f5f9;
       min-height: 100vh;
-      padding: 20px;
+      padding: 16px;
     }
     .container {
       max-width: 520px;
       margin: 0 auto;
       background: white;
-      border-radius: 24px;
-      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.4);
+      border-radius: 20px;
+      box-shadow: 0 8px 30px -4px rgba(0,0,0,0.25);
       overflow: hidden;
     }
+
+    /* ===== 简化页眉 ===== */
     .header {
       background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-      padding: 24px 28px;
+      padding: 14px 20px;
+      color: var(--on-primary);
     }
-    .header h1 { 
-      font-size: 26px; 
-      font-weight: 700; 
+    .header-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-title { flex: 1; min-width: 0; }
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .header p {
-      margin-top: 8px;
-      font-size: 14px;
-      opacity: 0.9;
+      font-size: 11px;
+      opacity: 0.85;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .header .header-top { display: flex; align-items: center; gap: 14px; }
     .school-logo {
-      width: 52px; height: 52px; object-fit: contain;
-      border-radius: 12px; background: rgba(255,255,255,0.2);
+      width: 40px; height: 40px; object-fit: contain;
+      border-radius: 10px; background: rgba(255,255,255,0.2);
+      flex-shrink: 0;
     }
-    
-    .form { padding: 28px; }
-    .form-group { margin-bottom: 20px; }
+    .auth-btn {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.45);
+      color: var(--on-primary);
+      padding: 6px 14px;
+      border-radius: 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .auth-btn:hover { background: rgba(255,255,255,0.3); }
+
+    /* ===== 用户栏 ===== */
+    .user-bar {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .user-bar .ub-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      object-fit: cover; background: rgba(255,255,255,0.25);
+    }
+    .user-bar .ub-text { flex: 1; font-size: 13px; }
+    .user-bar .ub-btn {
+      background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.45);
+      color: var(--on-primary); padding: 4px 10px; border-radius: 14px; font-size: 12px; cursor: pointer;
+    }
+
+    /* ===== 表单 ===== */
+    .form { padding: 16px 20px; }
+    .form-group { margin-bottom: 14px; }
     .form-group label {
       display: block;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
       color: var(--gray-700);
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .form-group label .required { color: var(--danger); }
     .form-group input,
     .form-group textarea,
     .form-group select {
       width: 100%;
-      padding: 14px 16px;
+      padding: 12px 14px;
       border: 2px solid var(--gray-200);
-      border-radius: 12px;
+      border-radius: 10px;
       font-size: 15px;
       outline: none;
       transition: all 0.2s;
       font-family: inherit;
       background: var(--gray-50);
+      -webkit-appearance: none;
+      appearance: none;
     }
     .form-group input:focus,
     .form-group textarea:focus,
-    .form-group select:focus { 
-      border-color: var(--primary); 
+    .form-group select:focus {
+      border-color: var(--primary);
       background: white;
-      box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent);
     }
     .form-group textarea {
-      min-height: 90px;
+      min-height: 80px;
       resize: vertical;
     }
-    
+
+    /* ===== 姓名+手机号同行 ===== */
+    .form-row {
+      display: flex;
+      gap: 12px;
+    }
+    .form-col-40 { flex: 0 0 38%; }
+    .form-col-50 { flex: 0 0 calc(50% - 6px); }
+    .form-col-60 { flex: 1; }
+
+    /* ===== 身份类型 - 方形触控按钮 ===== */
     .identity-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
     }
     .identity-grid input[type="radio"] { display: none; }
     .identity-grid label {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 14px 8px;
+      padding: 12px 6px;
       border: 2px solid var(--gray-200);
-      border-radius: 10px;
+      border-radius: 8px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
       font-size: 14px;
       font-weight: 600;
       color: var(--gray-600);
       background: var(--gray-50);
+      min-height: 44px;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .identity-grid label:active {
+      transform: scale(0.97);
     }
     .identity-grid input:checked + label {
       border-color: var(--primary);
       background: color-mix(in srgb, var(--primary) 10%, transparent);
-      color: var(--primary);
+      color: var(--primary-deep);
     }
-    
+
+    /* ===== 来校事由 - 方形触控按钮 ===== */
     .purpose-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
     }
     .purpose-grid input[type="radio"] { display: none; }
     .purpose-grid label {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 12px 8px;
+      padding: 10px 16px;
       border: 2px solid var(--gray-200);
-      border-radius: 10px;
+      border-radius: 8px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
       font-size: 14px;
       font-weight: 500;
       color: var(--gray-600);
       background: var(--gray-50);
+      min-height: 44px;
+      flex: 0 0 auto;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .purpose-grid label:active {
+      transform: scale(0.97);
     }
     .purpose-grid input:checked + label {
       border-color: var(--primary);
       background: color-mix(in srgb, var(--primary) 10%, transparent);
-      color: var(--primary);
+      color: var(--primary-deep);
     }
-    
+
+    /* ===== 班级选择器 - 自定义触控样式 ===== */
     .section-title {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
       color: var(--gray-800);
-      padding: 16px 0 12px;
+      padding: 12px 0 10px;
       border-top: 1px solid var(--gray-200);
-      margin-top: 8px;
+      margin-top: 4px;
     }
-    
-    .photo-upload {
-      border: 2px dashed var(--gray-300);
-      border-radius: 16px;
-      padding: 30px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s;
+    .class-selector {
       background: var(--gray-50);
+      border-radius: 10px;
+      padding: 10px;
+      border: 2px solid var(--gray-200);
     }
-    .photo-upload:hover {
-      border-color: var(--primary);
-      background: color-mix(in srgb, var(--primary) 4%, transparent);
+    .class-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
     }
-    .photo-upload p {
-      color: var(--gray-500);
-      font-size: 14px;
+    .class-grid + .class-grid {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--gray-200);
     }
-    .photo-preview {
-      width: 100%;
-      max-height: 250px;
-      object-fit: cover;
-      border-radius: 12px;
-      display: none;
-    }
-    .photo-preview.show { display: block; }
-    .face-status {
-      display: inline-flex;
+    .class-btn {
+      display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 13px;
+      justify-content: center;
+      padding: 10px 16px;
+      border: 2px solid var(--gray-200);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-size: 14px;
       font-weight: 500;
-      background: var(--gray-200);
       color: var(--gray-600);
-      margin-top: 12px;
+      background: white;
+      min-height: 44px;
+      flex: 0 0 auto;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
-    .face-status.detecting { background: #fef3c7; color: #92400e; }
-    .face-status.success { background: #dcfce7; color: #166534; }
-    .face-status.warning { background: #fee2e2; color: #991b1b; }
-    
-    .dynamic-fields { display: none; }
-    .dynamic-fields.show { display: block; }
-    
+    .class-btn:active {
+      transform: scale(0.97);
+    }
+    .class-btn.active {
+      border-color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 12%, white);
+      color: var(--primary-deep);
+      font-weight: 600;
+    }
+
+    /* ===== 提交按钮 ===== */
     .btn-submit {
       width: 100%;
-      padding: 16px;
+      padding: 14px;
       background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-      color: white;
+      color: var(--on-primary);
       border: none;
-      border-radius: 14px;
+      border-radius: 12px;
       font-size: 16px;
       font-weight: 700;
       cursor: pointer;
       transition: all 0.2s;
+      min-height: 48px;
     }
-    .btn-submit:hover { 
-      transform: translateY(-2px); 
-      box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.4);
+    .btn-submit:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px -4px rgba(15, 23, 42, 0.35);
     }
-    .btn-submit:disabled { 
-      opacity: 0.6; 
-      cursor: not-allowed; 
-      transform: none; 
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
       box-shadow: none;
     }
-    
+
+    /* ===== 消息提示 ===== */
     .message {
-      padding: 14px 18px;
-      border-radius: 12px;
-      margin-bottom: 20px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      margin-bottom: 14px;
       display: none;
       font-size: 14px;
       font-weight: 500;
@@ -232,70 +311,46 @@
       color: #991b1b;
       display: flex;
     }
-    
+
+    /* ===== 底部链接 ===== */
     .links {
       text-align: center;
-      padding: 20px 28px 28px;
+      padding: 10px 20px 16px;
       display: flex;
-      gap: 20px;
+      gap: 16px;
       justify-content: center;
     }
     .links a {
-      color: var(--primary);
+      color: var(--primary-deep);
       text-decoration: none;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
-      padding: 10px 20px;
-      border-radius: 10px;
+      padding: 8px 16px;
+      border-radius: 8px;
       transition: all 0.2s;
     }
-    .links a:hover { 
+    .links a:hover {
       background: color-mix(in srgb, var(--primary) 8%, transparent);
       text-decoration: none;
     }
-    
+
     .contact {
       text-align: center;
-      padding: 0 28px 24px;
-      font-size: 13px;
+      padding: 0 20px 16px;
+      font-size: 12px;
       color: var(--gray-500);
     }
     .contact:empty { display: none; }
 
-    .auth-btn {
-      background: rgba(255,255,255,0.2);
-      border: 1px solid rgba(255,255,255,0.5);
-      color: white;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .auth-btn:hover { background: rgba(255,255,255,0.3); }
-    .user-bar {
-      margin-top: 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .user-bar .ub-avatar {
-      width: 40px; height: 40px; border-radius: 50%;
-      object-fit: cover; background: rgba(255,255,255,0.25);
-    }
-    .user-bar .ub-text { flex: 1; font-size: 14px; }
-    .user-bar .ub-btn {
-      background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.5);
-      color: white; padding: 6px 12px; border-radius: 16px; font-size: 12px; cursor: pointer;
-    }
-
+    /* ===== 访客提示 ===== */
     .guest-hint {
-      background: #eff6ff; color: #1d4ed8; border-radius: 12px;
-      padding: 12px 16px; font-size: 13px; margin-bottom: 16px; line-height: 1.6;
+      background: color-mix(in srgb, var(--primary) 8%, white);
+      color: var(--primary-deep); border-radius: 10px;
+      padding: 10px 14px; font-size: 13px; margin-bottom: 12px; line-height: 1.5;
     }
-    .guest-hint a { color: #1d4ed8; font-weight: 600; cursor: pointer; text-decoration: underline; }
+    .guest-hint a { color: var(--primary-deep); font-weight: 600; cursor: pointer; text-decoration: underline; }
 
+    /* ===== 弹窗 ===== */
     .modal-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center;
@@ -307,32 +362,114 @@
       max-height: 90vh; overflow: auto;
     }
     .modal-header {
-      padding: 16px 20px; border-bottom: 1px solid #eee;
+      padding: 14px 18px; border-bottom: 1px solid #eee;
       display: flex; justify-content: space-between; align-items: center;
     }
-    .modal-header h2 { font-size: 18px; color: #333; }
+    .modal-header h2 { font-size: 17px; color: #333; }
     .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #999; }
-    .modal-body { padding: 20px; }
+    .modal-body { padding: 18px; }
     .modal-body input, .modal-body select {
-      width: 100%; padding: 12px 14px; border: 2px solid var(--gray-200); border-radius: 10px;
-      font-size: 15px; outline: none; margin-bottom: 12px;
+      width: 100%; padding: 11px 14px; border: 2px solid var(--gray-200); border-radius: 10px;
+      font-size: 15px; outline: none; margin-bottom: 10px;
     }
     .modal-body input:focus, .modal-body select:focus { border-color: var(--primary); }
-    .auth-switch { text-align: center; font-size: 13px; color: var(--gray-500); margin-top: 8px; }
-    .auth-switch a { color: var(--primary); cursor: pointer; }
-    .auth-error { color: var(--danger); font-size: 13px; text-align: center; min-height: 18px; margin-top: 6px; }
+    .auth-switch { text-align: center; font-size: 13px; color: var(--gray-500); margin-top: 6px; }
+    .auth-switch a { color: var(--primary-deep); cursor: pointer; }
+    .auth-error { color: var(--danger); font-size: 13px; text-align: center; min-height: 18px; margin-top: 4px; }
     .profile-photo-upload {
-      border: 2px dashed var(--gray-300); border-radius: 12px; padding: 20px;
-      text-align: center; cursor: pointer; margin-bottom: 12px; font-size: 14px; color: var(--gray-500);
+      border: 2px dashed var(--gray-300); border-radius: 10px; padding: 16px;
+      text-align: center; cursor: pointer; margin-bottom: 10px; font-size: 14px; color: var(--gray-500);
     }
     .profile-photo-upload:hover { border-color: var(--primary); }
-    
-    @media (max-width: 480px) {
-      body { padding: 12px; }
-      .container { border-radius: 20px; }
-      .header { padding: 24px 20px; }
-      .form { padding: 20px; }
-      .identity-grid { grid-template-columns: repeat(3, 1fr); }
-      .purpose-grid { grid-template-columns: 1fr 1fr; }
+
+    /* ===== 注册表单：身份按钮组 ===== */
+    .reg-role-label {
+      font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 8px;
     }
-   
+    .reg-role-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;
+    }
+    .reg-role-grid input[type="radio"] { display: none; }
+    .reg-role-grid label {
+      display: flex; align-items: center; justify-content: center;
+      padding: 12px 6px; border: 2px solid var(--gray-200); border-radius: 10px;
+      cursor: pointer; transition: all 0.15s; font-size: 15px; font-weight: 600;
+      color: var(--gray-600); background: var(--gray-50);
+      min-height: 48px; user-select: none; -webkit-tap-highlight-color: transparent;
+    }
+    .reg-role-grid label:active { transform: scale(0.97); }
+    .reg-role-grid input:checked + label {
+      border-color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 12%, white);
+      color: var(--primary-deep);
+    }
+
+    /* ===== 注册表单：姓名输入+重名检测 ===== */
+    .reg-name-wrap { position: relative; margin-bottom: 10px; }
+    .reg-name-wrap input { width: 100%; padding: 11px 14px; border: 2px solid var(--gray-200);
+      border-radius: 10px; font-size: 15px; outline: none; background: var(--gray-50); }
+    .reg-name-wrap input:focus { border-color: var(--primary); background: white;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent); }
+    .reg-name-status {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      font-size: 12px; font-weight: 600; pointer-events: none;
+    }
+    .reg-name-status.ok { color: var(--success); }
+    .reg-name-status.dup { color: var(--danger); }
+    .reg-name-wrap input.input-ok { border-color: var(--success); }
+    .reg-name-wrap input.input-dup { border-color: var(--danger); }
+
+    /* ===== 注册表单：密码输入+显示切换 ===== */
+    .reg-pwd-wrap {
+      position: relative; margin-bottom: 10px;
+    }
+    .reg-pwd-wrap input {
+      width: 100%; padding: 11px 42px 11px 14px; border: 2px solid var(--gray-200);
+      border-radius: 10px; font-size: 15px; outline: none; background: var(--gray-50);
+    }
+    .reg-pwd-wrap input:focus { border-color: var(--primary); background: white;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent); }
+    .pwd-toggle {
+      position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; color: var(--gray-400);
+      padding: 6px; display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .pwd-toggle:active { color: var(--primary); }
+
+    /* ===== 注册表单：已登录锁定状态 ===== */
+    .reg-locked input[disabled] {
+      background: var(--gray-100); color: var(--gray-500); border-color: var(--gray-200);
+      cursor: not-allowed; -webkit-text-fill-color: var(--gray-500);
+    }
+    .reg-locked-label {
+      font-size: 11px; color: var(--gray-400); margin-top: -6px; margin-bottom: 10px;
+    }
+
+    /* ===== 手机端适配 ===== */
+    @media (max-width: 480px) {
+      body { padding: 8px; }
+      .container { border-radius: 16px; }
+      .header { padding: 10px 14px; }
+      .header h1 { font-size: 18px; }
+      .school-logo { width: 34px; height: 34px; border-radius: 8px; }
+      .auth-btn { padding: 5px 12px; font-size: 12px; }
+      .form { padding: 14px; }
+      .form-group input,
+      .form-group textarea,
+      .form-group select,
+      .modal-body input,
+      .modal-body select { font-size: 16px; padding: 11px 12px; }
+      .form-group { margin-bottom: 12px; }
+      .identity-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+      .identity-grid label { padding: 11px 4px; font-size: 13px; min-height: 42px; }
+      .purpose-grid { gap: 6px; }
+      .purpose-grid label { padding: 9px 12px; font-size: 13px; min-height: 42px; }
+      .class-btn { padding: 9px 12px; font-size: 13px; min-height: 42px; }
+      .links { padding: 10px 14px 16px; gap: 10px; }
+      .modal-overlay { padding: 12px; }
+      .modal-body { padding: 14px; }
+      .form-col-40 { flex: 0 0 35%; }
+      .reg-role-grid { gap: 6px; }
+      .reg-role-grid label { padding: 11px 4px; font-size: 14px; min-height: 44px; }
+    }

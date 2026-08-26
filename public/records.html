@@ -6,6 +6,16 @@
   <title>访客管理</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="/css/records.css">
+  <style>
+    .btn-toggle { padding: 10px 8px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; background: #f3f4f6; color: #374151; flex-shrink: 0; white-space: nowrap; }
+    .filter-panel { background: white; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; }
+    .filter-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .filter-row select { padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; min-width: 120px; }
+    .bottom-bar { display: flex; gap: 10px; padding: 12px 16px; background: white; border-top: 1px solid #e5e7eb; position: sticky; bottom: 0; z-index: 50; }
+    .btn-action { flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; background: var(--primary); color: var(--on-primary); }
+    .stats-section.show { display: block; padding: 16px; }
+    @media (max-width: 600px) { .filter-row { flex-direction: column; } .filter-row select { width: 100%; } }
+  </style>
 </head>
 <body>
   <div class="login-overlay" id="loginOverlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:9999;">
@@ -13,10 +23,10 @@
       <h2 style="margin-bottom:20px;">请输入管理密码</h2>
       <input type="password" id="password" placeholder="请输入密码" style="padding:12px;border:2px solid #e1e5ee;border-radius:8px;width:200px;text-align:center;font-size:16px;">
       <br><br>
-      <button onclick="checkPassword()" style="padding:12px 30px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;">确认</button>
+      <button onclick="checkPassword()" style="padding:12px 30px;background:var(--primary);color:var(--on-primary);border:none;border-radius:8px;font-size:16px;cursor:pointer;">确认</button>
       <p id="loginError" style="color:#ef4444;margin-top:10px;display:none;">密码错误</p>
       <br>
-      <a href="/index.html" style="color:#3b82f6;font-size:13px;text-decoration:none;">← 返回登记页</a>
+      <a href="/index.html" style="color:var(--primary-deep);font-size:13px;text-decoration:none;">← 返回登记页</a>
     </div>
   </div>
   
@@ -38,28 +48,31 @@
   
   <div class="toolbar" id="toolbar">
     <input type="text" id="searchInput" oninput="renderAll()" placeholder="搜索姓名/手机号...">
-    <select id="statusFilter" onchange="renderAll()">
-      <option value="all">全部状态</option>
-      <option value="current">在访中</option>
-      <option value="checked">已签离</option>
-    </select>
-    <select id="identityFilter" onchange="renderAll()">
-      <option value="">全部身份</option>
-      <option value="家长">学生家长</option>
-      <option value="维修工">维修工人</option>
-      <option value="外来老师">外来老师</option>
-    </select>
-    <button class="btn-success" onclick="exportExcel()">导出</button>
+    <button class="btn-toggle" onclick="toggleFilters()">筛选</button>
   </div>
   
-  <div class="stats-bar" id="statsBar">
-    <div class="stat-item"><div class="num" id="totalCount">0</div><div class="label">总记录</div></div>
-    <div class="stat-item"><div class="num" id="currentCount">0</div><div class="label">当前在访</div></div>
-    <div class="stat-item"><div class="num" id="todayCount">0</div><div class="label">今日访问</div></div>
-    <div class="stat-item"><div class="num" id="visitorCount">0</div><div class="label">访客人数</div></div>
+  <div class="filter-panel" id="filterPanel" style="display:none;">
+    <div class="filter-row">
+      <select id="statusFilter" onchange="renderAll()">
+        <option value="all">全部状态</option>
+        <option value="current">在访中</option>
+        <option value="checked">已签离</option>
+      </select>
+      <select id="identityFilter" onchange="renderAll()">
+        <option value="">全部身份</option>
+        <option value="家长">学生家长</option>
+        <option value="维修工">维修工人</option>
+        <option value="外来老师">外来老师</option>
+      </select>
+    </div>
   </div>
   
   <div class="visitor-list" id="visitorList"></div>
+  
+  <div class="bottom-bar">
+    <button class="btn-action" onclick="toggleStats()">📊 统计</button>
+    <button class="btn-action" onclick="exportExcel()">📥 导出</button>
+  </div>
   
   <div class="stats-section" id="statsSection">
     <div class="stats-grid">
@@ -107,6 +120,16 @@
   </div>
 
   <script>
+    function textColorFor(hex) {
+      var h = (hex || '').replace('#', '');
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      if (h.length !== 6) return '#ffffff';
+      var r = parseInt(h.substr(0, 2), 16);
+      var g = parseInt(h.substr(2, 2), 16);
+      var b = parseInt(h.substr(4, 2), 16);
+      return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? '#111827' : '#ffffff';
+    }
+
     async function applyConfig() {
       try {
         var res = await fetch('/api/config');
@@ -114,6 +137,7 @@
         var s = document.documentElement.style;
         s.setProperty('--primary', cfg.theme.primary);
         s.setProperty('--secondary', cfg.theme.secondary);
+        s.setProperty('--on-primary', textColorFor(cfg.theme.primary));
         document.getElementById('schoolName').textContent = (cfg.schoolName || '访客管理') + ' · 访客管理';
       } catch(e) {}
     }
@@ -135,6 +159,19 @@
     var allData = [];
     var currentTab = 'current';
     var trendChart;
+    var filtersExpanded = false;
+    var statsExpanded = false;
+    
+    function toggleFilters() {
+      filtersExpanded = !filtersExpanded;
+      document.getElementById('filterPanel').style.display = filtersExpanded ? 'block' : 'none';
+    }
+    
+    function toggleStats() {
+      statsExpanded = !statsExpanded;
+      document.getElementById('statsSection').className = 'stats-section' + (statsExpanded ? ' show' : '');
+      if (statsExpanded) renderStats();
+    }
     
     async function loadData() {
       var res = await fetch('/api/visitors?page=1&pageSize=500&_t=' + Date.now());
@@ -150,7 +187,8 @@
       el.className = 'tab active';
       
       document.getElementById('toolbar').style.display = tab === 'stats' ? 'none' : 'flex';
-      document.getElementById('statsBar').style.display = tab === 'stats' ? 'none' : 'grid';
+      document.getElementById('filterPanel').style.display = 'none';
+      filtersExpanded = false;
       document.getElementById('visitorList').style.display = tab === 'stats' ? 'none' : 'block';
       document.getElementById('statsSection').className = 'stats-section' + (tab === 'stats' ? ' show' : '');
       
@@ -172,14 +210,6 @@
       
       var current = filtered.filter(function(v) { return !v.checkout_at; });
       var history = filtered.filter(function(v) { return !!v.checkout_at; });
-      
-      document.getElementById('totalCount').textContent = allData.length;
-      document.getElementById('currentCount').textContent = allData.filter(function(v) { return !v.checkout_at; }).length;
-      document.getElementById('todayCount').textContent = allData.filter(function(v) { return v.checkin_at && v.checkin_at.slice(0, 10) === new Date().toISOString().slice(0, 10); }).length;
-      
-      var visitors = {};
-      allData.forEach(function(v) { visitors[v.name + '|' + v.phone] = true; });
-      document.getElementById('visitorCount').textContent = Object.keys(visitors).length;
       
       var list = currentTab === 'current' ? current : history;
       renderList(list);
@@ -236,7 +266,7 @@
         html += '<div class="visitor-card">';
         html += '<div class="avatar">' + photoHtml + '</div>';
         html += '<div class="info">';
-        html += '<div class="name">' + v.name + ' <span style="color:#3b82f6;font-size:12px;">第' + thisVisitNum + '次来访</span></div>';
+        html += '<div class="name">' + v.name + ' <span style="color:var(--primary-deep);font-size:12px;">第' + thisVisitNum + '次来访</span></div>';
         html += '<div class="meta">📱 ' + v.phone + ' | ' + (v.code || '-') + '</div>';
         if (info) html += '<div class="meta">📝 ' + info + '</div>';
         if (currentTab === 'history' && v.checkout_at) {
@@ -273,7 +303,7 @@
       
       var photoHtml = v.photo_path ? '<img src="' + v.photo_path + '" style="width:100px;height:100px;border-radius:12px;object-fit:cover;margin:0 auto 16px;display:block;">' : '';
       var code = v.code || '';
-      var codeHtml = code ? '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px;"><span style="font-size:24px;font-weight:700;color:#3b82f6;">' + code + '</span></div>' : '';
+      var codeHtml = code ? '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px;"><span style="font-size:24px;font-weight:700;color:var(--primary-deep);">' + code + '</span></div>' : '';
       
       var html = photoHtml + codeHtml;
       html += '<div class="detail-row"><div class="detail-label">姓名</div><div class="detail-value">' + v.name + '</div></div>';

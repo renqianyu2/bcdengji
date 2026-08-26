@@ -39,6 +39,16 @@
     var allData = [];
     var selectedIds = new Set();
     
+    function textColorFor(hex) {
+      var h = (hex || '').replace('#', '');
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      if (h.length !== 6) return '#ffffff';
+      var r = parseInt(h.substr(0, 2), 16);
+      var g = parseInt(h.substr(2, 2), 16);
+      var b = parseInt(h.substr(4, 2), 16);
+      return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? '#111827' : '#ffffff';
+    }
+
     async function applyConfig() {
       try {
         var res = await fetch('/api/config');
@@ -46,6 +56,7 @@
         var s = document.documentElement.style;
         s.setProperty('--primary', cfg.theme.primary);
         s.setProperty('--secondary', cfg.theme.secondary);
+        s.setProperty('--on-primary', textColorFor(cfg.theme.primary));
         document.getElementById('schoolName').textContent = cfg.schoolName || '访客凭证';
       } catch(e) {}
     }

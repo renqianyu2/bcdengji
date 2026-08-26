@@ -53,6 +53,10 @@ if (!fs.existsSync(dbDir)) {
 }
 const db = new Database(path.join(dbDir, 'visitors.db'));
 
+// 启用 WAL 模式，支持读写并发
+db.pragma('journal_mode = WAL');
+db.pragma('busy_timeout = 5000');
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS visitors (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -165,6 +169,17 @@ db.exec(`
   )
 `);
 
+// ========== 索引 ==========
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_visitors_code ON visitors(code);
+  CREATE INDEX IF NOT EXISTS idx_visitors_name ON visitors(name);
+  CREATE INDEX IF NOT EXISTS idx_visitors_phone ON visitors(phone);
+  CREATE INDEX IF NOT EXISTS idx_visitors_host ON visitors(host);
+  CREATE INDEX IF NOT EXISTS idx_visitors_identity ON visitors(identity);
+  CREATE INDEX IF NOT EXISTS idx_visitors_checkin ON visitors(checkin_at);
+  CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+`);
+
 const DEFAULT_CONFIG = {
   schoolName: '北辰幼儿园',
   welcomeText: '访客登记',
@@ -174,7 +189,8 @@ const DEFAULT_CONFIG = {
   identityTypes: [
     { value: '家长', label: '学生家长', enabled: true },
     { value: '维修工', label: '维修工人', enabled: true },
-    { value: '外来老师', label: '外来老师', enabled: true }
+    { value: '外来老师', label: '来访人', enabled: true },
+    { value: '其他', label: '其他人员', enabled: true }
   ],
   fields: [
     { key: 'name', label: '姓名', type: 'text', enabled: true, required: true },
@@ -182,9 +198,10 @@ const DEFAULT_CONFIG = {
     { key: 'photo', label: '人脸图像', type: 'photo', enabled: true, required: true }
   ],
   purposes: {
-    '家长': ['家长会', '探访', '送东西', '其他'],
+    '家长': ['接送', '沟通', '家长会', '陪餐', '其他'],
     '维修工': [],
-    '外来老师': ['参加活动', '采访', '其他']
+    '外来老师': ['督导检查', '观摩交流', '其他'],
+    '其他': ['其他']
   },
   school: {
     type: '小学',
@@ -231,13 +248,18 @@ function parseCookies(req) {
 function getSession(req) {
   const token = parseCookies(req).sid;
   if (!token) return null;
-  const s = db.prepare('SELECT * FROM sessions WHERE token = ?').get(token);
-  if (!s) return null;
-  if (s.expires_at && new Date(s.expires_at) < new Date()) {
+  const row = db.prepare(`
+    SELECT u.id, u.username, u.role, u.name, u.phone, u.photo_path, u.grade, u.class_name, s.expires_at
+    FROM sessions s JOIN users u ON s.user_id = u.id
+    WHERE s.token = ?
+  `).get(token);
+  if (!row) return null;
+  if (row.expires_at && new Date(row.expires_at) < new Date()) {
     db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
     return null;
   }
-  return db.prepare('SELECT id, username, role, name, phone, photo_path, grade, class_name FROM users WHERE id = ?').get(s.user_id);
+  delete row.expires_at;
+  return row;
 }
 
 function requireAuth(role) {
@@ -283,6 +305,14 @@ app.get('/api/interview-stats', (req, res) => {
 });
 
 // ========== 认证 ==========
+// 实时检测用户名是否已存在
+app.get('/api/auth/check-username', (req, res) => {
+  const { username } = req.query;
+  if (!username || !username.trim()) return res.json({ exists: false });
+  const exists = !!db.prepare('SELECT id FROM users WHERE username = ?').get(username.trim());
+  res.json({ exists });
+});
+
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ error: '请输入账号和密码' });
@@ -429,10 +459,12 @@ app.put('/api/users/password', requireAuth('principal'), (req, res) => {
   res.json({ message: '密码已修改' });
 });
 
+const VISITOR_FIELDS = 'id, code, name, phone, identity, photo_path, purpose, purpose_detail, class_info, student_info, item_photo_path, item_description, company, from_school, host, reason, car_info, custom_fields, checkin_at, checkout_at';
+
 app.get('/api/visitors', (req, res) => {
   const { name, phone, identity, host, code, startDate, endDate, page = '1', pageSize = '20' } = req.query;
   
-  let sql = 'SELECT * FROM visitors WHERE 1=1';
+  let sql = `SELECT ${VISITOR_FIELDS} FROM visitors WHERE 1=1`;
   const params = [];
   
   if (code) {
@@ -456,15 +488,15 @@ app.get('/api/visitors', (req, res) => {
     params.push(`%${host}%`);
   }
   if (startDate) {
-    sql += ' AND date(checkin_at) >= ?';
+    sql += ' AND checkin_at >= ?';
     params.push(startDate);
   }
   if (endDate) {
-    sql += ' AND date(checkin_at) <= ?';
-    params.push(endDate);
+    sql += ' AND checkin_at <= ?';
+    params.push(endDate + ' 23:59:59');
   }
   
-  const countSql = sql.replace('SELECT *', 'SELECT COUNT(*) as total');
+  const countSql = sql.replace(VISITOR_FIELDS, 'COUNT(*) as total');
   const countResult = db.prepare(countSql).get(...params);
   const total = countResult.total;
   
@@ -473,6 +505,14 @@ app.get('/api/visitors', (req, res) => {
   
   const visitors = db.prepare(sql).all(...params);
   res.json({ data: visitors, total });
+});
+
+// 按姓名搜索最近一条记录（用于自动填充）
+app.get('/api/visitors/search-by-name', (req, res) => {
+  const { name } = req.query;
+  if (!name || !name.trim()) return res.json(null);
+  const visitor = db.prepare('SELECT name, phone, photo_path, identity FROM visitors WHERE name = ? ORDER BY checkin_at DESC LIMIT 1').get(name.trim());
+  res.json(visitor || null);
 });
 
 function generateCode() {
@@ -546,7 +586,7 @@ app.delete('/api/visitors/:id', (req, res) => {
 app.get('/api/export', (req, res) => {
   const { name, host, startDate, endDate } = req.query;
   
-  let sql = 'SELECT * FROM visitors WHERE 1=1';
+  let sql = `SELECT ${VISITOR_FIELDS} FROM visitors WHERE 1=1`;
   const params = [];
   
   if (name) {
@@ -558,12 +598,12 @@ app.get('/api/export', (req, res) => {
     params.push(`%${host}%`);
   }
   if (startDate) {
-    sql += ' AND date(checkin_at) >= ?';
+    sql += ' AND checkin_at >= ?';
     params.push(startDate);
   }
   if (endDate) {
-    sql += ' AND date(checkin_at) <= ?';
-    params.push(endDate);
+    sql += ' AND checkin_at <= ?';
+    params.push(endDate + ' 23:59:59');
   }
   
   sql += ' ORDER BY checkin_at DESC';
@@ -609,14 +649,23 @@ app.get('/api/export', (req, res) => {
     };
   });
   
-  const ws = xlsx.utils.json_to_sheet(data);
-  const wb = xlsx.utils.book_new();
-  xlsx.utils.book_append_sheet(wb, ws, '访客记录');
-  
-  const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
-  res.setHeader('Content-Disposition', 'attachment; filename=visitors.xlsx');
-  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.send(buffer);
+  const headers = Object.keys(data[0] || {});
+  const csvRows = [headers.join(',')];
+  data.forEach(row => {
+    csvRows.push(headers.map(h => '"' + String(row[h] || '').replace(/"/g, '""') + '"').join(','));
+  });
+  const csv = csvRows.join('\n');
+  const bom = '\uFEFF';
+  res.setHeader('Content-Disposition', 'attachment; filename=visitors.csv');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.send(bom + csv);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('未捕获异常:', err);
+});
+process.on('unhandledRejection', (err) => {
+  console.error('未处理Promise:', err);
 });
 
 app.listen(PORT, '0.0.0.0', () => {

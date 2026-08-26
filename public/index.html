@@ -9,13 +9,13 @@
 <body>
   <div class="container">
     <div class="header">
-      <div class="header-top">
+      <div class="header-row">
         <img id="schoolLogo" class="school-logo" alt="校徽" style="display:none;">
-        <div style="flex:1;">
+        <div class="header-title">
           <h1 id="schoolName">访客登记</h1>
           <p id="welcomeText">Visitor Registration</p>
         </div>
-        <button id="authBtn" class="auth-btn" onclick="openAuth()">登录 / 注册</button>
+        <button id="authBtn" class="auth-btn" onclick="openAuth()">登录</button>
       </div>
       <div id="userBar" class="user-bar" style="display:none;"></div>
     </div>
@@ -49,14 +49,27 @@
           <p class="auth-switch">还没有账号？<a onclick="showRegister()">去注册</a></p>
         </div>
         <div id="authRegister" style="display:none;">
-          <select id="regRole" onchange="onRegRoleChange()">
-            <option value="parent">访客</option>
-            <option value="teacher">老师</option>
-            <option value="principal">校长</option>
-          </select>
-          <input type="text" id="regUser" placeholder="设置账号">
-          <input type="password" id="regPass" placeholder="设置密码">
-          <input type="text" id="regName" placeholder="姓名">
+          <div class="reg-role-label">选择身份</div>
+          <div class="reg-role-grid">
+            <input type="radio" name="regRole" value="parent" id="regRole_parent" checked onchange="onRegRoleChange()">
+            <label for="regRole_parent">访客</label>
+            <input type="radio" name="regRole" value="teacher" id="regRole_teacher" onchange="onRegRoleChange()">
+            <label for="regRole_teacher">老师</label>
+            <input type="radio" name="regRole" value="principal" id="regRole_principal" onchange="onRegRoleChange()">
+            <label for="regRole_principal">校长</label>
+          </div>
+          <div class="reg-name-wrap">
+            <input type="text" id="regName" placeholder="姓名（即登录账号）" oninput="onRegNameInput()">
+            <span id="regNameStatus" class="reg-name-status"></span>
+          </div>
+          <div class="reg-pwd-wrap">
+            <input type="password" id="regPass" placeholder="设置密码">
+            <button type="button" class="pwd-toggle" onclick="togglePwd('regPass', this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          </div>
+          <div class="reg-pwd-wrap">
+            <input type="password" id="regPass2" placeholder="确认密码">
+            <button type="button" class="pwd-toggle" onclick="togglePwd('regPass2', this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          </div>
           <div id="regParentFields">
             <input type="tel" id="regPhone" placeholder="手机号" maxlength="11">
           </div>
@@ -145,10 +158,21 @@
       el('profileGrade').innerHTML = opts;
     }
 
+    function textColorFor(hex) {
+      var h = (hex || '').replace('#', '');
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      if (h.length !== 6) return '#ffffff';
+      var r = parseInt(h.substr(0, 2), 16);
+      var g = parseInt(h.substr(2, 2), 16);
+      var b = parseInt(h.substr(4, 2), 16);
+      return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? '#111827' : '#ffffff';
+    }
+
     function applyTheme() {
       var s = document.documentElement.style;
       s.setProperty('--primary', config.theme.primary);
       s.setProperty('--secondary', config.theme.secondary);
+      s.setProperty('--on-primary', textColorFor(config.theme.primary));
     }
 
     function applyHeader() {
@@ -176,6 +200,7 @@
       var h = '';
       if (isParent()) {
         h += buildParentProfileCard();
+        h += buildIdentityGridHtml();
         h += '<div id="identitySection">' + buildParentSection() + '</div>';
         h += buildCustomFieldsHtml();
       } else {
@@ -198,44 +223,44 @@
 
     function buildParentProfileCard() {
       var avatar = currentUser.photo_path ? '<img class="ub-avatar" style="width:56px;height:56px;" src="' + currentUser.photo_path + '">' : '';
-      return '<div class="guest-hint" style="display:flex;align-items:center;gap:12px;background:#eff6ff;">' +
+      return '<div class="guest-hint" style="display:flex;align-items:center;gap:12px;background:color-mix(in srgb, var(--primary) 10%, white);">' +
         avatar +
         '<div style="flex:1;font-size:14px;"><div style="font-weight:600;">' + (currentUser.name || '') + '</div>' +
         '<div style="color:#6b7280;font-size:12px;margin-top:2px;">' + (currentUser.phone || '未填写手机号') + '</div></div>' +
-        '<button class="ub-btn" style="background:#3b82f6;border:none;" onclick="openProfile()">编辑</button></div>';
+        '<button class="ub-btn" style="background:var(--primary);border:none;color:var(--on-primary);" onclick="openProfile()">编辑</button></div>';
     }
 
-    function buildStaticHtml() {
-      var h = '';
+    function buildIdentityGridHtml() {
       var ids = (config.identityTypes || []).filter(function(t) { return t.enabled; });
-      h += '<div class="form-group"><label>身份类型 <span class="required">*</span></label><div class="identity-grid">';
+      if (ids.length === 0) ids = config.identityTypes || [];
+      var h = '<div class="form-group"><div class="identity-grid">';
       ids.forEach(function(t, i) {
         h += '<input type="radio" name="identity" value="' + t.value + '" id="identity_' + i + '"' + (t.value === currentIdentity ? ' checked' : '') + ' onchange="onIdentityChange(this)">';
         h += '<label for="identity_' + i + '">' + t.label + '</label>';
       });
       h += '</div></div>';
+      return h;
+    }
 
-      if (fieldEnabled('name')) {
-        var nc = fieldCfg('name');
-        h += '<div class="form-group"><label>' + (nc && nc.label ? nc.label : '姓名');
-        if (fieldRequired('name')) h += ' <span class="required">*</span>';
-        h += '</label><input type="text" name="name" placeholder="请输入姓名"></div>';
-      }
-      if (fieldEnabled('phone')) {
-        var pc = fieldCfg('phone');
-        h += '<div class="form-group"><label>' + (pc && pc.label ? pc.label : '手机号');
-        if (fieldRequired('phone')) h += ' <span class="required">*</span>';
-        h += '</label><input type="tel" name="phone" maxlength="11" placeholder="11位手机号"></div>';
-      }
-      if (fieldEnabled('photo')) {
-        var fc = fieldCfg('photo');
-        h += '<div class="form-group"><label>' + (fc && fc.label ? fc.label : '人脸图像');
-        if (fieldRequired('photo')) h += ' <span class="required">*</span>';
-        h += '</label>';
-        h += '<div class="photo-upload" onclick="document.querySelector(\'input[name=photo]\').click()"><p>点击上传照片</p></div>';
-        h += '<input type="file" name="photo" accept="image/*" capture="environment" style="display:none;" onchange="handlePhoto(this)">';
-        h += '<img id="photoPreview" class="photo-preview" alt="预览">';
-        h += '<div id="faceStatus" class="face-status">请上传照片</div></div>';
+    function buildStaticHtml() {
+      var h = '';
+      h += buildIdentityGridHtml();
+
+      if (fieldEnabled('name') || fieldEnabled('phone')) {
+        h += '<div class="form-row">';
+        if (fieldEnabled('name')) {
+          var nc = fieldCfg('name');
+          h += '<div class="form-group form-col-40"><label>' + (nc && nc.label ? nc.label : '姓名');
+          if (fieldRequired('name')) h += ' <span class="required">*</span>';
+          h += '</label><input type="text" name="name" placeholder="姓名" oninput="onNameInput(this.value)"></div>';
+        }
+        if (fieldEnabled('phone')) {
+          var pc = fieldCfg('phone');
+          h += '<div class="form-group form-col-60"><label>' + (pc && pc.label ? pc.label : '手机号');
+          if (fieldRequired('phone')) h += ' <span class="required">*</span>';
+          h += '</label><input type="tel" name="phone" maxlength="11" placeholder="手机号"></div>';
+        }
+        h += '</div>';
       }
       return h;
     }
@@ -253,6 +278,7 @@
       if (currentIdentity === '家长') return buildParentSection();
       if (currentIdentity === '维修工') return buildWorkerSection();
       if (currentIdentity === '外来老师') return buildTeacherSection();
+      if (currentIdentity === '其他') return buildOtherSection();
       return buildGenericSection();
     }
 
@@ -281,13 +307,27 @@
       return h;
     }
 
-    function fillParentClass() {
-      var g = el('parentGrade').value;
-      var sel = el('parentClass');
-      sel.innerHTML = '<option value="">选择班级</option>';
-      if (!g) return;
+    function selectParentGrade(grade, btn) {
+      var grid = el('parentGradeGrid');
+      grid.querySelectorAll('.class-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      el('parentGrade').value = grade;
+      el('parentClass').value = '';
+      var classGrid = el('parentClassGrid');
       var n = schoolClasses.classesPerGrade || 4;
-      for (var i = 1; i <= n; i++) sel.innerHTML += '<option value="' + g + '（' + i + '）班">' + g + '（' + i + '）班</option>';
+      var html = '';
+      for (var i = 1; i <= n; i++) {
+        var cls = grade + '（' + i + '）班';
+        html += '<div class="class-btn" onclick="selectParentClass(\'' + cls + '\', this)">' + i + '班</div>';
+      }
+      classGrid.innerHTML = html;
+    }
+
+    function selectParentClass(cls, btn) {
+      var grid = el('parentClassGrid');
+      grid.querySelectorAll('.class-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      el('parentClass').value = cls;
     }
 
     function buildParentSection() {
@@ -296,12 +336,17 @@
       if (purposes.length) h += buildPurposeRadios(purposes);
       h += '<div id="classFields" class="form-group" style="display:none;">';
       h += '<label>选择班级 <span class="required">*</span></label>';
-      h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
-      h += '<select name="grade" id="parentGrade" onchange="fillParentClass()"><option value="">选择年级</option>' + gradeOptions() + '</select>';
-      h += '<select name="classInfo" id="parentClass"><option value="">先选年级</option></select>';
+      h += '<div class="class-selector">';
+      h += '<div class="class-grid" id="parentGradeGrid">';
+      (schoolClasses.grades || []).forEach(function(g, i) {
+        h += '<div class="class-btn' + (i === 0 ? '' : '') + '" onclick="selectParentGrade(\'' + g + '\', this)">' + g + '</div>';
+      });
+      h += '</div>';
+      h += '<div class="class-grid" id="parentClassGrid"></div>';
+      h += '<input type="hidden" name="grade" id="parentGrade">';
+      h += '<input type="hidden" name="classInfo" id="parentClass">';
       h += '</div></div>';
-      h += '<div id="teacherFields" class="form-group" style="display:none;"><label>被访人（老师）<span class="required">*</span></label><select name="host">' + teacherOptions() + '</select></div>';
-      h += '<div id="purposeDetailParent" class="form-group" style="display:none;"><label>具体事项 <span class="required">*</span></label><input type="text" name="purposeDetail" placeholder="请填写具体事项"></div>';
+      h += '<div id="purposeDetailParent" class="form-group" style="display:none;"><label>具体事项</label><input type="text" name="purposeDetail" placeholder="请填写具体事项（选填）"></div>';
       return h;
     }
 
@@ -324,10 +369,25 @@
 
     function buildTeacherSection() {
       var purposes = (config.purposes && config.purposes['外来老师']) || [];
-      var h = '<div class="section-title">外来老师信息</div>';
-      h += '<div class="form-group"><label>来自哪个学校 <span class="required">*</span></label><input type="text" name="fromSchool" placeholder="请输入学校名称"></div>';
-      if (purposes.length) h += buildPurposeRadios(purposes);
-      h += '<div id="teacherDetail" class="form-group"><label id="teacherDetailLabel">具体事项 <span class="required">*</span></label><input type="text" name="purposeDetail" placeholder="请填写具体事项"></div>';
+      var h = '<div class="section-title">来访人信息</div>';
+      h += '<div class="form-row">';
+      h += '<div class="form-group form-col-50"><label>来访人单位 <span class="required">*</span></label><input type="text" name="fromSchool" placeholder="请输入单位名称"></div>';
+      if (purposes.length) {
+        h += '<div class="form-group form-col-50"><label>来校事由 <span class="required">*</span></label><div class="purpose-grid">';
+        purposes.forEach(function(p, i) {
+          h += '<input type="radio" name="purpose" value="' + p + '" id="purpose_' + i + '"' + (i === 0 ? ' checked' : '') + ' onchange="onPurposeChange()">';
+          h += '<label for="purpose_' + i + '">' + p + '</label>';
+        });
+        h += '</div></div>';
+      }
+      h += '</div>';
+      h += '<div id="teacherDetail" class="form-group"><label id="teacherDetailLabel">具体事项</label><input type="text" name="purposeDetail" placeholder="请填写具体事项（选填）"></div>';
+      return h;
+    }
+
+    function buildOtherSection() {
+      var h = '<div class="section-title">其他人员信息</div>';
+      h += '<div class="form-group"><label>来校事由 <span class="required">*</span></label><input type="text" name="purposeDetail" placeholder="请输入来校事由"></div>';
       return h;
     }
 
@@ -341,15 +401,40 @@
       var checked = document.querySelector('input[name="purpose"]:checked');
       var purpose = checked ? checked.value : '';
       if (currentIdentity === '家长') {
-        var cf = el('classFields'), tf = el('teacherFields'), pd = el('purposeDetailParent');
-        if (cf) cf.style.display = (purpose === '家长会' || purpose === '送东西') ? 'block' : 'none';
-        if (tf) tf.style.display = purpose === '探访' ? 'block' : 'none';
+        var cf = el('classFields'), pd = el('purposeDetailParent');
+        var showClass = (purpose === '接送' || purpose === '沟通' || purpose === '家长会' || purpose === '陪餐');
+        if (cf) cf.style.display = showClass ? 'block' : 'none';
         if (pd) pd.style.display = purpose === '其他' ? 'block' : 'none';
       } else if (currentIdentity === '外来老师') {
-        var labels = { '参加活动': '参加什么活动', '采访': '采访谁', '其他': '具体事项' };
+        var labels = { '督导检查': '检查内容', '观摩交流': '交流内容', '其他': '具体事项' };
         var l = el('teacherDetailLabel');
-        if (l) l.innerHTML = (labels[purpose] || '具体事项') + ' <span class="required">*</span>';
+        if (l) l.innerHTML = (labels[purpose] || '具体事项');
       }
+    }
+
+    // 输入姓名时自动填充手机号（老访客）
+    var _nameSearchTimer = null;
+    var _lastAutoFillName = '';
+    function onNameInput(val) {
+      clearTimeout(_nameSearchTimer);
+      var phoneInput = document.querySelector('input[name="phone"]');
+      if (_lastAutoFillName && val !== _lastAutoFillName && phoneInput) {
+        phoneInput.readOnly = false;
+        phoneInput.value = '';
+        photoPath = null;
+      }
+      if (!val || val.length < 2) return;
+      _nameSearchTimer = setTimeout(function() {
+        fetch('/api/visitors/search-by-name?name=' + encodeURIComponent(val))
+          .then(function(r) { return r.json(); })
+          .then(function(v) {
+            if (!v) return;
+            _lastAutoFillName = val;
+            if (phoneInput && v.phone) { phoneInput.value = v.phone; phoneInput.readOnly = true; }
+            if (v.photo_path) photoPath = v.photo_path;
+          })
+          .catch(function() {});
+      }, 300);
     }
 
     function handlePhoto(input) {
@@ -393,9 +478,44 @@
       el('authLogin').style.display = 'none';
       el('authRegister').style.display = 'block';
       el('authError').textContent = '';
+      el('regName').value = '';
+      el('regPass').value = '';
+      el('regPass2').value = '';
+      el('regPhone').value = '';
+      el('regNameStatus').textContent = '';
+      el('regNameStatus').className = 'reg-name-status';
+      el('regName').className = '';
+      _regNameLastOk = '';
+      var wrap = el('authRegister');
+      if (currentUser) {
+        wrap.classList.add('reg-locked');
+        el('regName').value = currentUser.name || '';
+        el('regName').disabled = true;
+        el('regPhone').value = currentUser.phone || '';
+        el('regPhone').disabled = true;
+        _regNameLastOk = currentUser.name || '';
+        var lbl = wrap.querySelector('.reg-locked-label');
+        if (!lbl) { lbl = document.createElement('div'); lbl.className = 'reg-locked-label'; lbl.textContent = '姓名和手机号沿用当前登录信息'; el('regName').parentNode.insertBefore(lbl, el('regName').nextSibling); }
+        var roleVal = currentUser.role === 'parent' ? 'parent' : currentUser.role === 'teacher' ? 'teacher' : 'principal';
+        var radio = el('regRole_' + roleVal);
+        if (radio) radio.checked = true;
+        onRegRoleChange();
+      } else {
+        wrap.classList.remove('reg-locked');
+        el('regName').disabled = false;
+        el('regPhone').disabled = false;
+        var oldLbl = wrap.querySelector('.reg-locked-label');
+        if (oldLbl) oldLbl.remove();
+        el('regRole_parent').checked = true;
+        onRegRoleChange();
+      }
+    }
+    function getRegRole() {
+      var checked = document.querySelector('input[name="regRole"]:checked');
+      return checked ? checked.value : 'parent';
     }
     function onRegRoleChange() {
-      var role = el('regRole').value;
+      var role = getRegRole();
       el('regParentFields').style.display = role === 'parent' ? 'block' : 'none';
       el('regTeacherFields').style.display = role === 'teacher' ? 'block' : 'none';
     }
@@ -406,6 +526,32 @@
       if (!g) return;
       var n = schoolClasses.classesPerGrade || 4;
       for (var i = 1; i <= n; i++) sel.innerHTML += '<option value="' + g + '（' + i + '）班">' + g + '（' + i + '）班</option>';
+    }
+
+    function togglePwd(inputId, btn) {
+      var inp = el(inputId);
+      if (inp.type === 'password') { inp.type = 'text'; btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'; }
+      else { inp.type = 'password'; btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'; }
+    }
+
+    var _regNameTimer = null;
+    var _regNameLastOk = '';
+    function onRegNameInput() {
+      clearTimeout(_regNameTimer);
+      var val = el('regName').value.trim();
+      var st = el('regNameStatus');
+      st.textContent = ''; st.className = 'reg-name-status';
+      el('regName').className = '';
+      if (!val) return;
+      _regNameTimer = setTimeout(function() {
+        fetch('/api/auth/check-username?username=' + encodeURIComponent(val))
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            if (d.exists) { st.textContent = '已存在'; st.className = 'reg-name-status dup'; el('regName').className = 'input-dup'; _regNameLastOk = ''; }
+            else { st.textContent = '可用'; st.className = 'reg-name-status ok'; el('regName').className = 'input-ok'; _regNameLastOk = val; }
+          })
+          .catch(function() {});
+      }, 400);
     }
 
     async function doLogin() {
@@ -425,21 +571,28 @@
     }
 
     async function doRegister() {
-      var role = el('regRole').value;
-      var username = el('regUser').value.trim();
-      var password = el('regPass').value;
+      var role = getRegRole();
       var name = el('regName').value.trim();
+      var password = el('regPass').value;
+      var password2 = el('regPass2').value;
       var phone = el('regPhone').value.trim();
       var grade = el('regGrade').value;
       var class_name = el('regClass').value;
 
-      if (!username || !password) { el('authError').textContent = '请设置账号和密码'; return; }
-      if (role === 'parent' && (!name || !phone)) { el('authError').textContent = '访客请填写姓名和手机号'; return; }
-      if (role === 'teacher' && (!name || !grade || !class_name)) { el('authError').textContent = '老师请填写姓名和班级'; return; }
+      if (!name) { el('authError').textContent = '请填写姓名'; return; }
+      if (!password) { el('authError').textContent = '请设置密码'; return; }
+      if (password.length < 4) { el('authError').textContent = '密码至少4位'; return; }
+      if (password !== password2) { el('authError').textContent = '两次密码输入不一致'; return; }
+      if (_regNameLastOk !== name) {
+        el('authError').textContent = '请确认姓名可用（或姓名已被占用）'; return;
+      }
+      if (role === 'parent' && !phone) { el('authError').textContent = '访客请填写手机号'; return; }
+      if (role === 'parent' && phone && !/^1[3-9]\d{9}$/.test(phone)) { el('authError').textContent = '手机号格式不正确'; return; }
+      if (role === 'teacher' && (!grade || !class_name)) { el('authError').textContent = '老师请填写班级'; return; }
 
       var res = await fetch('/api/auth/register', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username, password: password, role: role, name: name, phone: phone, grade: grade, class_name: class_name })
+        body: JSON.stringify({ username: name, password: password, role: role, name: name, phone: phone, grade: grade, class_name: class_name })
       });
       var data = await res.json();
       if (!res.ok) { el('authError').textContent = data.error || '注册失败'; return; }
@@ -532,7 +685,8 @@
       el('message').style.display = 'none';
 
       var formData = new FormData(form);
-      var identity = isParent() ? '家长' : currentIdentity;
+      var identityRadio = form.querySelector('input[name="identity"]:checked');
+      var identity = identityRadio ? identityRadio.value : (isParent() ? '家长' : currentIdentity);
       var name, phone, photoPathFinal;
       if (isParent()) {
         name = currentUser.name;
@@ -562,18 +716,16 @@
       }
 
       if (identity === '家长') {
-        if (purposeValue === '家长会' || purposeValue === '送东西') {
+        if (purposeValue === '接送' || purposeValue === '沟通' || purposeValue === '家长会' || purposeValue === '陪餐') {
           if (!classInfo) { showMessage('请选择班级', 'error'); return; }
-        } else if (purposeValue === '探访') {
-          if (!host) { showMessage('请选择被访老师', 'error'); return; }
-        } else if (purposeValue === '其他') {
-          if (!purposeDetail) { showMessage('请填写具体事项', 'error'); return; }
         }
       } else if (identity === '维修工') {
         if (!company || !reason) { showMessage('请填写公司名称和维修内容', 'error'); return; }
       } else if (identity === '外来老师') {
-        if (!fromSchool) { showMessage('请填写来自哪个学校', 'error'); return; }
-        if (purposeValue && !purposeDetail) { showMessage('请填写具体事项', 'error'); return; }
+        if (!fromSchool) { showMessage('请填写来访人单位', 'error'); return; }
+        if (!purposeValue) { showMessage('请选择来校事由', 'error'); return; }
+      } else if (identity === '其他') {
+        if (!purposeDetail) { showMessage('请填写来校事由', 'error'); return; }
       }
 
       var customFields = {};

@@ -4,3 +4,6 @@ node_modules/
 database/
 .DS_Store
 npm-debug.log*
+public/uploads/*
+!public/uploads/.gitkeep
+npm-cache/
