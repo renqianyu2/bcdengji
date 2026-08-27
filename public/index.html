@@ -769,8 +769,9 @@
         var result = await res.json();
         showMessage('登记成功！访客码：' + result.code, 'success');
         photoPath = null;
+        submitBtn.disabled = false;
+        submitBtn.textContent = '提交登记';
         renderForm();
-        setTimeout(function() { window.location.href = '/records.html'; }, 3000);
       } catch (err) {
         showMessage(err.message, 'error');
         submitBtn.disabled = false;

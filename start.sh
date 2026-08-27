@@ -30,11 +30,12 @@ case $num in
     ;;
   2)
     pkill -f "node server.js" 2>/dev/null
+    sleep 1
     echo "服务已停止"
     ;;
   3)
     pkill -f "node server.js" 2>/dev/null
-    sleep 1
+    sleep 2
     node server.js &
     sleep 1
     echo "服务已重启"

@@ -1,0 +1,81 @@
+{
+  "schoolName": "北辰幼儿园",
+  "welcomeText": "访客登记",
+  "contactPhone": "13972230899",
+  "logoPath": "",
+  "theme": {
+    "primary": "#fd8800",
+    "secondary": "#d2c600"
+  },
+  "identityTypes": [
+    {
+      "value": "家长",
+      "label": "学生家长",
+      "enabled": true
+    },
+    {
+      "value": "维修工",
+      "label": "维修工人",
+      "enabled": true
+    },
+    {
+      "value": "外来老师",
+      "label": "来访人",
+      "enabled": true
+    },
+    {
+      "value": "其他",
+      "label": "其他人员",
+      "enabled": true
+    }
+  ],
+  "fields": [
+    {
+      "key": "name",
+      "label": "姓名",
+      "type": "text",
+      "enabled": true,
+      "required": true
+    },
+    {
+      "key": "phone",
+      "label": "手机号",
+      "type": "tel",
+      "enabled": true,
+      "required": true
+    },
+    {
+      "key": "photo",
+      "label": "人脸图像",
+      "type": "photo",
+      "enabled": true,
+      "required": true
+    }
+  ],
+  "purposes": {
+    "家长": [
+      "接送",
+      "沟通",
+      "家长会",
+      "陪餐",
+      "其他"
+    ],
+    "维修工": [],
+    "外来老师": [
+      "督导检查",
+      "观摩交流",
+      "其他"
+    ],
+    "其他": [
+      "其他"
+    ]
+  },
+  "school": {
+    "type": "幼儿园",
+    "classesPerGrade": 3,
+    "extraClasses": [
+      "托班"
+    ]
+  },
+  "customFields": []
+}

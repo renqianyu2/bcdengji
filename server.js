@@ -211,8 +211,30 @@ const DEFAULT_CONFIG = {
   customFields: []
 };
 
+const CONFIG_FILE = path.join(__dirname, 'config.json');
+
+function loadConfigFromFile() {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+    }
+  } catch(e) {}
+  return null;
+}
+
+function saveConfigToFile(data) {
+  try {
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch(e) {
+    console.error('保存配置文件失败:', e.message);
+  }
+}
+
 if (!db.prepare('SELECT id FROM settings WHERE id = 1').get()) {
-  db.prepare('INSERT INTO settings (id, data) VALUES (1, ?)').run(JSON.stringify(DEFAULT_CONFIG));
+  const fileConfig = loadConfigFromFile();
+  const configToSave = fileConfig || DEFAULT_CONFIG;
+  db.prepare('INSERT INTO settings (id, data) VALUES (1, ?)').run(JSON.stringify(configToSave));
+  saveConfigToFile(configToSave);
 }
 
 function hashPassword(pw) {
@@ -413,6 +435,7 @@ app.put('/api/config', requireAuth('principal'), (req, res) => {
   if (!data || typeof data !== 'object') return res.status(400).json({ error: '配置无效' });
   db.prepare('UPDATE settings SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1')
     .run(JSON.stringify(data));
+  saveConfigToFile(data);
   res.json({ message: '配置已保存', config: getConfig() });
 });
 
@@ -667,6 +690,21 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (err) => {
   console.error('未处理Promise:', err);
 });
+
+function gracefulShutdown() {
+  console.log('正在关闭服务...');
+  try {
+    db.pragma('wal_checkpoint(TRUNCATE)');
+    db.close();
+    console.log('数据库已安全关闭');
+  } catch(e) {
+    console.error('关闭数据库失败:', e.message);
+  }
+  process.exit(0);
+}
+
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`服务运行在 http://0.0.0.0:${PORT}`);
