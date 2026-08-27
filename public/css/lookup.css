@@ -32,6 +32,7 @@
       text-align: center;
     }
     .header h1 { font-size: 24px; font-weight: 600; }
+    .header-logo { height: 40px; object-fit: contain; margin-bottom: 8px; }
     .header p { font-size: 14px; opacity: 0.85; margin-top: 4px; }
     
     .search-box {

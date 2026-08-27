@@ -16,6 +16,8 @@
       border-bottom: 1px solid #eee;
     }
     .header h1 { font-size: 18px; color: #333; }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .header-logo { height: 32px; object-fit: contain; }
     .header a { color: var(--primary); text-decoration: none; font-size: 14px; }
     
     .toolbar {

@@ -1,11 +1,11 @@
 {
   "schoolName": "北辰幼儿园",
-  "welcomeText": "访客登记",
+  "welcomeText": "",
   "contactPhone": "13972230899",
-  "logoPath": "",
+  "logoPath": "/uploads/1787816739689-460204454.PNG",
   "theme": {
-    "primary": "#fd8800",
-    "secondary": "#d2c600"
+    "primary": "#f3cf00",
+    "secondary": "#df6100"
   },
   "identityTypes": [
     {

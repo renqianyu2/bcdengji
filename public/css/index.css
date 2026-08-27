@@ -31,6 +31,13 @@
       background: white;
       border-radius: 20px;
       box-shadow: 0 8px 30px -4px rgba(0,0,0,0.25);
+      overflow: visible;
+    }
+    .header {
+      border-radius: 20px 20px 0 0;
+    }
+    .form {
+      border-radius: 0 0 20px 20px;
       overflow: hidden;
     }
 
@@ -39,11 +46,14 @@
       background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
       padding: 14px 20px;
       color: var(--on-primary);
+      overflow: visible;
     }
     .header-row {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 10px;
+      overflow: visible;
     }
     .header-title { flex: 1; min-width: 0; }
     .header h1 {
@@ -66,6 +76,11 @@
       width: 40px; height: 40px; object-fit: contain;
       border-radius: 10px; background: rgba(255,255,255,0.2);
       flex-shrink: 0;
+    }
+    .school-logo-header {
+      height: 48px; width: auto; max-width: 100%;
+      object-fit: contain;
+      display: block;
     }
     .auth-btn {
       background: rgba(255,255,255,0.2);
@@ -472,4 +487,93 @@
       .form-col-40 { flex: 0 0 35%; }
       .reg-role-grid { gap: 6px; }
       .reg-role-grid label { padding: 11px 4px; font-size: 14px; min-height: 44px; }
+    }
+
+    /* ===== 登记成功欢迎页 ===== */
+    .welcome-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 30%, #fbbf24 70%, #f59e0b 100%);
+      display: none; justify-content: center; align-items: center;
+      z-index: 2000; flex-direction: column;
+    }
+    .welcome-overlay.show { display: flex; }
+    .welcome-content {
+      position: relative; text-align: center; padding: 40px 30px;
+      animation: welcomeFadeIn 0.6s ease-out;
+    }
+    .welcome-logo { margin-bottom: 16px; animation: textSlideUp 0.6s ease-out 0.1s both; }
+    .welcome-logo img { height: 60px; object-fit: contain; }
+    .welcome-main-logo { margin-bottom: 16px; animation: welcomeFadeIn 0.8s ease-out; }
+    .welcome-main-logo img { max-width: 260px; height: auto; object-fit: contain; filter: drop-shadow(0 4px 16px rgba(0,0,0,0.15)); }
+    @keyframes welcomeFadeIn {
+      from { opacity: 0; transform: scale(0.8) translateY(20px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    /* 背景装饰圆 */
+    .welcome-bg-shapes { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; overflow: hidden; }
+    .shape { position: absolute; opacity: 0.12; }
+    .shape-1 { width: 200px; height: 200px; top: -60px; left: -60px; color: #f97316; animation: shapeFloat 6s ease-in-out infinite; }
+    .shape-2 { width: 140px; height: 140px; bottom: -40px; right: -40px; color: #eab308; animation: shapeFloat 8s ease-in-out infinite reverse; }
+    .shape-3 { width: 100px; height: 100px; top: 20px; right: 30px; color: #f59e0b; animation: shapeFloat 5s ease-in-out infinite 1s; }
+    @keyframes shapeFloat {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-15px) rotate(10deg); }
+    }
+
+    /* 文字动画 */
+    .welcome-text { margin-bottom: 20px; }
+    .welcome-school {
+      font-size: 32px; font-weight: 800; color: #92400e;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      animation: textSlideUp 0.6s ease-out 0.4s both;
+    }
+    .welcome-slogan {
+      font-size: 42px; font-weight: 900; color: #78350f;
+      margin-top: 4px;
+      animation: textSlideUp 0.6s ease-out 0.6s both;
+    }
+    @keyframes textSlideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 访客码 */
+    .welcome-code {
+      font-size: 16px; color: #92400e; background: rgba(255,255,255,0.5);
+      display: inline-block; padding: 8px 20px; border-radius: 20px;
+      backdrop-filter: blur(4px);
+      animation: textSlideUp 0.6s ease-out 0.8s both;
+    }
+    .welcome-code span { font-weight: 800; font-size: 20px; letter-spacing: 3px; color: #b45309; }
+
+    /* 装饰元素 */
+    .welcome-decor { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; }
+    .deco-star {
+      position: absolute; width: 30px; height: 30px; color: #fbbf24;
+      top: 15%; left: 12%; animation: decoSpin 4s linear infinite, decoFade 3s ease-in-out infinite;
+    }
+    .deco-heart {
+      position: absolute; width: 28px; height: 28px; color: #f87171;
+      bottom: 20%; right: 15%; animation: decoSpin 5s linear infinite reverse, decoFade 4s ease-in-out infinite 1s;
+    }
+    .deco-flower {
+      position: absolute; width: 32px; height: 32px; color: #a78bfa;
+      top: 25%; right: 10%; animation: decoSpin 6s linear infinite, decoFade 3.5s ease-in-out infinite 0.5s;
+    }
+    @keyframes decoSpin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes decoFade {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
+
+    /* 退出动画 */
+    .welcome-overlay.hide {
+      animation: welcomeFadeOut 0.5s ease-in forwards;
+    }
+    @keyframes welcomeFadeOut {
+      to { opacity: 0; transform: scale(1.1); }
     }

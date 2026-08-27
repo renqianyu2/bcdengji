@@ -10,11 +10,7 @@
   <div class="container">
     <div class="header">
       <div class="header-row">
-        <img id="schoolLogo" class="school-logo" alt="校徽" style="display:none;">
-        <div class="header-title">
-          <h1 id="schoolName">访客登记</h1>
-          <p id="welcomeText">Visitor Registration</p>
-        </div>
+        <img id="schoolLogo" class="school-logo-header" src="/uploads/logo.png" alt="校徽">
         <button id="authBtn" class="auth-btn" onclick="openAuth()">登录</button>
       </div>
       <div id="userBar" class="user-bar" style="display:none;"></div>
@@ -31,6 +27,37 @@
         <a href="/lookup">查询访客码</a>
       </div>
       <div id="contact" class="contact"></div>
+    </div>
+  </div>
+
+  <!-- 登记成功欢迎页 -->
+  <div class="welcome-overlay" id="welcomeOverlay">
+      <div class="welcome-content">
+        <div class="welcome-main-logo">
+          <img src="/uploads/welcome-logo.png" alt="欢迎">
+        </div>
+        <div class="welcome-text">
+          <div class="welcome-school" id="welcomeSchoolName">北辰幼儿园</div>
+          <div class="welcome-slogan">欢迎您</div>
+        </div>
+        <div class="welcome-code">
+          您的访客码：<span id="welcomeCode"></span>
+        </div>
+        <div class="welcome-decor">
+          <svg class="deco-star" viewBox="0 0 40 40"><polygon points="20,2 25,15 39,15 28,24 32,38 20,30 8,38 12,24 1,15 15,15" fill="currentColor"/></svg>
+          <svg class="deco-heart" viewBox="0 0 40 40"><path d="M20 36 C10 28 2 20 2 13 C2 7 7 2 13 2 C16 2 19 4 20 6 C21 4 24 2 27 2 C33 2 38 7 38 13 C38 20 30 28 20 36Z" fill="currentColor"/></svg>
+          <svg class="deco-flower" viewBox="0 0 40 40">
+            <g transform="translate(20,20)">
+              <ellipse cx="0" cy="-10" rx="5" ry="10" fill="currentColor" transform="rotate(0)"/>
+              <ellipse cx="0" cy="-10" rx="5" ry="10" fill="currentColor" transform="rotate(60)"/>
+              <ellipse cx="0" cy="-10" rx="5" ry="10" fill="currentColor" transform="rotate(120)"/>
+              <ellipse cx="0" cy="-10" rx="5" ry="10" fill="currentColor" transform="rotate(180)"/>
+              <ellipse cx="0" cy="-10" rx="5" ry="10" fill="currentColor" transform="rotate(240)"/>
+              <ellipse cx="0" cy="-10" rx="5" ry="10" fill="currentColor" transform="rotate(300)"/>
+              <circle cx="0" cy="0" r="4" fill="currentColor"/>
+            </g>
+          </svg>
+        </div>
     </div>
   </div>
 
@@ -176,11 +203,6 @@
     }
 
     function applyHeader() {
-      el('schoolName').textContent = config.schoolName || '访客登记';
-      el('welcomeText').textContent = config.welcomeText || '';
-      var logo = el('schoolLogo');
-      if (config.logoPath) { logo.src = config.logoPath; logo.style.display = 'block'; }
-      else { logo.style.display = 'none'; }
       el('contact').textContent = config.contactPhone ? '联系电话：' + config.contactPhone : '';
     }
 
@@ -767,17 +789,39 @@
         }
 
         var result = await res.json();
-        showMessage('登记成功！访客码：' + result.code, 'success');
         photoPath = null;
-        submitBtn.disabled = false;
-        submitBtn.textContent = '提交登记';
-        renderForm();
+        showWelcome(result.code);
       } catch (err) {
         showMessage(err.message, 'error');
         submitBtn.disabled = false;
         submitBtn.textContent = '提交登记';
       }
     });
+
+    // ===== 欢迎页 =====
+    function showWelcome(code) {
+      var overlay = el('welcomeOverlay');
+      var schoolEl = el('welcomeSchoolName');
+      var codeEl = el('welcomeCode');
+      if (schoolEl) schoolEl.textContent = config ? config.schoolName : '北辰幼儿园';
+      if (codeEl) codeEl.textContent = code;
+      overlay.classList.remove('hide');
+      overlay.classList.add('show');
+      setTimeout(function() { closeWelcome(); }, 4000);
+    }
+
+    function closeWelcome() {
+      var overlay = el('welcomeOverlay');
+      overlay.classList.add('hide');
+      setTimeout(function() {
+        overlay.classList.remove('show', 'hide');
+        showMessage('登记成功！访客码：' + el('welcomeCode').textContent, 'success');
+        submitBtn = el('submitBtn');
+        submitBtn.disabled = false;
+        submitBtn.textContent = '提交登记';
+        renderForm();
+      }, 500);
+    }
 
     init();
   </script>

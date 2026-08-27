@@ -8,7 +8,10 @@
 </head>
 <body>
   <div class="header">
-    <h1 id="schoolName">访客凭证</h1>
+    <div class="header-left">
+      <img id="headerLogo" class="header-logo" src="/uploads/logo.png" alt="logo">
+      <h1 id="schoolName">访客凭证</h1>
+    </div>
     <a href="/index.html">← 返回登记页</a>
   </div>
   
@@ -58,6 +61,7 @@
         s.setProperty('--secondary', cfg.theme.secondary);
         s.setProperty('--on-primary', textColorFor(cfg.theme.primary));
         document.getElementById('schoolName').textContent = cfg.schoolName || '访客凭证';
+        if (cfg.logoPath) document.getElementById('headerLogo').src = cfg.logoPath;
       } catch(e) {}
     }
     

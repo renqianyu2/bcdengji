@@ -21,7 +21,10 @@
 
   <div class="main" id="main" style="display:none;">
     <div class="topbar">
-      <h1>访客登记系统 · 配置</h1>
+      <div class="topbar-left">
+        <img id="headerLogo" class="header-logo" src="/uploads/logo.png" alt="logo">
+        <h1>访客登记系统 · 配置</h1>
+      </div>
       <div class="topbar-actions">
         <a class="btn-ghost" href="/index.html">返回登记页</a>
         <button class="btn-primary" onclick="save()">保存配置</button>
@@ -218,6 +221,7 @@
       el('themeSecondary').value = config.theme.secondary || '#1d4ed8';
       el('schoolType').value = (config.school && config.school.type) || '小学';
       el('classesPerGrade').value = (config.school && config.school.classesPerGrade) || 4;
+      if (config.logoPath) document.getElementById('headerLogo').src = config.logoPath;
       renderExtraClasses();
       renderLogo();
       renderIdentities();
@@ -275,6 +279,15 @@
       var g = parseInt(h.substr(2, 2), 16);
       var b = parseInt(h.substr(4, 2), 16);
       return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? '#111827' : '#ffffff';
+    }
+
+    function applyTheme() {
+      var s = document.documentElement.style;
+      s.setProperty('--primary', config.theme.primary);
+      s.setProperty('--secondary', config.theme.secondary);
+      s.setProperty('--on-primary', textColorFor(config.theme.primary));
+      var overlay = el('loginOverlay');
+      overlay.style.background = 'linear-gradient(135deg,' + config.theme.primary + ' 0%,' + config.theme.secondary + ' 100%)';
     }
 
     function previewTheme() {
@@ -507,6 +520,12 @@
     }
 
     (async function init() {
+      try {
+        var cr = await fetch('/api/config');
+        config = await cr.json();
+        normalizeConfig();
+        applyTheme();
+      } catch(e) {}
       try {
         var res = await fetch('/api/auth/me');
         if (res.ok) {

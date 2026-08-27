@@ -35,6 +35,8 @@ body {
   display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
 }
 .topbar h1 { font-size: 20px; }
+.topbar-left { display: flex; align-items: center; gap: 10px; }
+.header-logo { height: 32px; object-fit: contain; }
 .topbar-actions { display: flex; gap: 10px; align-items: center; }
 
 .btn-primary {

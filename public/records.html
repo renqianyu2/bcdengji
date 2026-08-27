@@ -32,7 +32,10 @@
   
   <div class="main-content" id="mainContent" style="display:none;">
   <div class="header">
-    <h1 id="schoolName">访客管理</h1>
+    <div class="header-left">
+      <img id="headerLogo" class="header-logo" src="/uploads/logo.png" alt="logo">
+      <h1 id="schoolName">访客管理</h1>
+    </div>
     <div class="header-links">
       <a href="/index.html">返回登记页</a>
       <a href="/print">打印</a>
@@ -139,6 +142,7 @@
         s.setProperty('--secondary', cfg.theme.secondary);
         s.setProperty('--on-primary', textColorFor(cfg.theme.primary));
         document.getElementById('schoolName').textContent = (cfg.schoolName || '访客管理') + ' · 访客管理';
+        if (cfg.logoPath) document.getElementById('headerLogo').src = cfg.logoPath;
       } catch(e) {}
     }
 
